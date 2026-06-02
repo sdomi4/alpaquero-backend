@@ -2,6 +2,7 @@ from __future__ import annotations
 from time import sleep
 import time
 import threading
+from observatory.error_handler import handle_error
 from observatory.errors import StateError
 
 from typing import Callable, Generic, TypeVar
@@ -43,7 +44,7 @@ class Alpaquero(Generic[TAlpaca]):
         try:
             self._alpaca = self._factory()
         except Exception as e:
-            print("Error creating Alpaca device:", e)
+            handle_error(e, f"Error creating {self.name} Alpaca device", level="warning")
             self._alpaca = None
         self._stop.clear()
         self._thread = threading.Thread(target=self._run, name=f"Alpaquero-{self.name}", daemon=True)
@@ -59,7 +60,7 @@ class Alpaquero(Generic[TAlpaca]):
             if self._alpaca:
                 self._alpaca.Connected = False
         except Exception as e:
-            print(f"Error disconnecting {self.name} Alpaca device:", e)
+            handle_error(e, f"Error disconnecting {self.name} Alpaca device", level="warning")
         finally:
             self._notify_destroyed()
         self._thread = None
@@ -74,7 +75,7 @@ class Alpaquero(Generic[TAlpaca]):
         try:
             self._on_destroy()
         except Exception as e:
-            print(f"Error running {self.name} destroy callback:", e)
+            handle_error(e, f"Error running {self.name} destroy callback", level="warning")
 
     def _run(self):
         healthy = False
@@ -96,10 +97,10 @@ class Alpaquero(Generic[TAlpaca]):
                 self._sleep_coop(self._poll_time)
             
             except StateError as e:
-                print("Error state reported in updater:", e)
+                handle_error(e, "Error state reported in updater", level="warning")
                 self._sleep_coop(self._poll_time)
             except Exception as e:
-                print(f"Error in Alpaca updater: {e}")
+                handle_error(e, f"Error in {self.name} Alpaca updater", level="error")
                 traceback.print_exc()
                 self._notify_destroyed()
                 self._alpaca = None
@@ -116,7 +117,7 @@ class Alpaquero(Generic[TAlpaca]):
             if self._alpaca:
                 print(f"Reconnected to {self.name} Alpaca device")
         except Exception as e:
-            print(f"Error reconnecting to {self.name} Alpaca device:", e)
+            handle_error(e, f"Error reconnecting to {self.name} Alpaca device", level="warning")
             self._alpaca = None
 
     def _sleep_coop(self, duration: float):

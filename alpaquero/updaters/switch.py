@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 from observatory.state import StateManager, SwitchState, ToggleControl, RangeControl
 from observatory.devices.switch import AlpaqueroSwitch
+from observatory.error_handler import handle_error
 from alpaquero.factories.switch import enumerate_switch_controls
 
 if TYPE_CHECKING:
@@ -23,4 +24,4 @@ def switch_updater(switch_device: "AlpaqueroSwitch", id, state: "StateManager" =
             elif isinstance(control, RangeControl):
                 control.value = switch_device.alpaca.GetSwitchValue(control.id)
     except Exception as e:
-        print(f"Error updating switch state: {e}")
+        handle_error(e, "Error updating switch state", level="warning")

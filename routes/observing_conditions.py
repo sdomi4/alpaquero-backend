@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+from observatory.error_handler import handle_error
 from observatory.observatory import Observatory
 from routes import get_observatory
 
@@ -12,7 +13,8 @@ async def conditions_startup(
     try:
         observatory.observing_conditions[conditions_id].connect()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error connecting to observing conditions {conditions_id}: {e}")
+        message = handle_error(e, f"Error connecting to observing conditions {conditions_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
     
 @router.post("/{conditions_id}/shutdown")
 async def conditions_shutdown(
@@ -22,4 +24,5 @@ async def conditions_shutdown(
     try:
         observatory.observing_conditions[conditions_id].disconnect()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error disconnecting from observing conditions {conditions_id}: {e}")
+        message = handle_error(e, f"Error disconnecting from observing conditions {conditions_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)

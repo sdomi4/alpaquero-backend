@@ -3,6 +3,7 @@ import asyncio
 from pathlib import Path
 
 from observatory.action_registry import ActionRegistry
+from observatory.error_handler import handle_error
 from observatory.devices.camera import AlpaqueroCamera
 from alpaquero.factories.camera import camera_factory
 from alpaquero.updaters.camera import camera_updater
@@ -265,7 +266,7 @@ class Observatory:
                 sequence_builder = SequenceParser(yaml_string, self)
                 self.sequence_registry.add_sequence(sequence_builder)
             except Exception as e:
-                print(f"Skipping invalid sequence file {sequence_path}: {e}")
+                handle_error(e, f"Skipping invalid sequence file {sequence_path}", level="warning")
 
     def emergency_shutdown(self):
         print("Performing emergency shutdown procedures")
@@ -273,17 +274,17 @@ class Observatory:
             try:
                 telescope.park()
             except Exception as e:
-                print(f"Error parking telescope {telescope.name} during emergency shutdown: {e}")
+                handle_error(e, f"Error parking telescope {telescope.name} during emergency shutdown", level="error")
         for cover in self.covers.values():
             try:
                 cover.close(override=True)
             except Exception as e:
-                print(f"Error closing cover {cover.name} during emergency shutdown: {e}")
+                handle_error(e, f"Error closing cover {cover.name} during emergency shutdown", level="error")
         for dome in self.domes.values():
             try:
                 dome.close(override=True)
             except Exception as e:
-                print(f"Error closing dome {dome.name} during emergency shutdown: {e}")
+                handle_error(e, f"Error closing dome {dome.name} during emergency shutdown", level="error")
 
     def emergency_halt(self):
         # TODO stop all sequences
@@ -292,17 +293,17 @@ class Observatory:
             try:
                 telescope.alpaca.AbortSlew()
             except Exception as e:
-                print(f"Error aborting slew for telescope {telescope.name} during emergency halt: {e}")
+                handle_error(e, f"Error aborting slew for telescope {telescope.name} during emergency halt", level="error")
         for cover in self.covers.values():
             try:
                 cover.alpaca.HaltCover()
             except Exception as e:
-                print(f"Error halting cover {cover.name} during emergency halt: {e}")
+                handle_error(e, f"Error halting cover {cover.name} during emergency halt", level="error")
         for dome in self.domes.values():
             try:
                 dome.alpaca.AbortSlew()
             except Exception as e:
-                print(f"Error aborting slew for dome {dome.name} during emergency halt: {e}")
+                handle_error(e, f"Error aborting slew for dome {dome.name} during emergency halt", level="error")
 
     def get_device(self, device_id: str):
         for device_dict in [self.domes, self.telescopes, self.cameras, self.observing_conditions, self.safety_monitors, self.covers, self.filterwheels, self.switches]:

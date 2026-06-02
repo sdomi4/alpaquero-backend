@@ -1,5 +1,6 @@
 from observatory.state import StateManager, DomeState
 from observatory.devices.dome import AlpaqueroDome
+from observatory.error_handler import handle_error
 
 def dome_updater(dome: "AlpaqueroDome", id, state: "StateManager" = None):
     if not dome.alpaca.Connected:
@@ -11,6 +12,6 @@ def dome_updater(dome: "AlpaqueroDome", id, state: "StateManager" = None):
         device.shutter_status = dome.alpaca.ShutterStatus
 
         if device.shutter_status == 4:
-            print("Dome reported an error")
+            handle_error("Dome reported an error", level="error")
     except Exception as e:
-        print(f"Error updating dome state: {e}")
+        handle_error(e, "Error updating dome state", level="warning")

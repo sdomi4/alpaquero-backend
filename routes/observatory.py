@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Body
+from observatory.error_handler import handle_error
 from observatory.sequence_parser import SequenceParser
 from observatory.action_registry import ActionRegistry
 from observatory.observatory import Observatory
@@ -89,7 +90,8 @@ async def upload_sequence(
             print(parsed_sequence)
             return {"status": "valid", "parsed_steps": len(parsed_sequence.steps)}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to parse sequence: {e}")
+        message = handle_error(e, "Failed to parse sequence", level="error")
+        raise HTTPException(status_code=400, detail=message)
     
 
 @router.get("/devices")

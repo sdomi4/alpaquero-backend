@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+from observatory.error_handler import handle_error
 from observatory.observatory import Observatory
 from observatory.state import SwitchState
 from routes import get_observatory
@@ -13,7 +14,8 @@ async def switch_startup(
     try:
         observatory.switches[switch_id].connect()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error connecting to switch {switch_id}: {e}")
+        message = handle_error(e, f"Error connecting to switch {switch_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
     
 @router.post("/{switch_id}/shutdown")
 async def switch_shutdown(
@@ -23,7 +25,8 @@ async def switch_shutdown(
     try:
         observatory.switches[switch_id].disconnect()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error disconnecting from switch {switch_id}: {e}")
+        message = handle_error(e, f"Error disconnecting from switch {switch_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
 
 @router.get("/{switch_id}/controls")
 async def get_switch_controls(
@@ -57,4 +60,5 @@ async def set_switch(
         observatory.switches[switch_id].set_switch(switch_number, setting)
         return {"message": f"Switch {switch_number} on {switch_id} set to {setting}"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error setting switch {switch_number} on {switch_id}: {e}")
+        message = handle_error(e, f"Error setting switch {switch_number} on {switch_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)

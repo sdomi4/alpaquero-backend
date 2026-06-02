@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 @dataclass(slots=True)
-class ObservatoryError(BaseException):
+class ObservatoryError(Exception):
     code: str
     message: str
     detail: str | None = None

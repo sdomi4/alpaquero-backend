@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 import asyncio
 from observatory.observatory import Observatory 
+from observatory.error_handler import connect_error_websocket, disconnect_error_websocket, handle_error_async
 from routes import get_observatory_ws
 
 router = APIRouter()
@@ -15,4 +16,19 @@ async def state_websocket(websocket: WebSocket, observatory: Observatory = Depen
     except WebSocketDisconnect:
         pass
     except Exception as e:
+        await handle_error_async(e, "Error sending observatory state", level="error")
         await websocket.close(code=1011, reason=str(e))
+
+@router.websocket("/ws/errors")
+async def error_websocket(websocket: WebSocket):
+    await websocket.accept()
+    connect_error_websocket(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        await handle_error_async(e, "Error in error websocket", level="warning")
+    finally:
+        disconnect_error_websocket(websocket)

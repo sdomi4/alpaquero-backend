@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+from observatory.error_handler import handle_error
 from observatory.observatory import Observatory
 from routes import get_observatory
 
@@ -12,7 +13,8 @@ async def filterwheel_startup(
     try:
         observatory.filterwheels[filterwheel_id].connect()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error connecting to filterwheel {filterwheel_id}: {e}")
+        message = handle_error(e, f"Error connecting to filterwheel {filterwheel_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
     
 @router.post("/{filterwheel_id}/shutdown")
 async def filterwheel_shutdown(
@@ -22,7 +24,8 @@ async def filterwheel_shutdown(
     try:
         observatory.filterwheels[filterwheel_id].disconnect()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error disconnecting from filterwheel {filterwheel_id}: {e}")
+        message = handle_error(e, f"Error disconnecting from filterwheel {filterwheel_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
 
 @router.post("/{filterwheel_id}/move/{position}")
 async def move_filterwheel(
@@ -34,4 +37,5 @@ async def move_filterwheel(
         await observatory.filterwheels[filterwheel_id].trigger_move(position)
         return {"message": f"Filter wheel {filterwheel_id} moved to position {position}"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error moving filterwheel {filterwheel_id}: {e}")
+        message = handle_error(e, f"Error moving filterwheel {filterwheel_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)

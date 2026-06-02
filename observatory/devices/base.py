@@ -3,6 +3,7 @@ import asyncio
 from typing import Any, TypeVar, Generic, TYPE_CHECKING, Callable
 
 from observatory.action_registry import ActionRegistry
+from observatory.error_handler import handle_error
 
 if TYPE_CHECKING:
     from observatory.observatory import Observatory
@@ -44,4 +45,4 @@ class ObservatoryDevice(ABC, Generic[TAlpaca]):
         try:
             task.result()
         except Exception as e:
-            print("oppla trigger failed:", e)
+            handle_error(e, "Trigger task failed", level="error")

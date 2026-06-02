@@ -1,5 +1,6 @@
 from observatory.state import StateManager, ObservingConditionsState
 from observatory.devices.observing_conditions import AlpaqueroObservingConditions
+from observatory.error_handler import handle_error
 
 def observing_conditions_updater(observing_conditions: "AlpaqueroObservingConditions", id, state: "StateManager" = None):
     if not observing_conditions.alpaca.Connected:
@@ -18,4 +19,4 @@ def observing_conditions_updater(observing_conditions: "AlpaqueroObservingCondit
         device.daylight = observing_conditions.alpaca.SkyBrightness
 
     except Exception as e:
-        print(f"Error updating observing conditions state: {e}")
+        handle_error(e, "Error updating observing conditions state", level="warning")

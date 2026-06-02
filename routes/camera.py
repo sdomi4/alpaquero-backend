@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from observatory.error_handler import handle_error
 from observatory.observatory import Observatory
 from routes import get_observatory
 
@@ -20,7 +21,8 @@ async def camera_startup(
     try:
         observatory.cameras[camera_id].connect()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error connecting to camera {camera_id}: {e}")
+        message = handle_error(e, f"Error connecting to camera {camera_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
     
 @router.post("/{camera_id}/shutdown")
 async def camera_shutdown(
@@ -30,7 +32,8 @@ async def camera_shutdown(
     try:
         observatory.cameras[camera_id].disconnect()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error disconnecting from camera {camera_id}: {e}")
+        message = handle_error(e, f"Error disconnecting from camera {camera_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
 
 @router.post("/{camera_id}/set_temperature/{target_temp}")
 async def set_camera_temperature(
@@ -42,7 +45,8 @@ async def set_camera_temperature(
         observatory.cameras[camera_id].cool(target_temp)
         return {"message": f"Camera {camera_id} cooling to {target_temp}C"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error setting temperature for camera {camera_id}: {e}")
+        message = handle_error(e, f"Error setting temperature for camera {camera_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
     
 @router.post("/{camera_id}/capture")
 async def capture_image(
@@ -60,4 +64,5 @@ async def capture_image(
         )
         return {"message": f"Capture started for camera {camera_id}"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error capturing image for camera {camera_id}: {e}")
+        message = handle_error(e, f"Error capturing image for camera {camera_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)

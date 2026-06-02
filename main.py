@@ -1,9 +1,11 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from observatory.observatory import Observatory
+from observatory.error_handler import handle_error, set_error_loop
 
 # import routers
 from routes.dome import router as dome_router
@@ -21,13 +23,14 @@ from routes.status import router as status_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Starting up observatory...")
+    set_error_loop(asyncio.get_running_loop())
     try:
         observatory = Observatory()
         observatory.startup()
         app.state.observatory = observatory
         
     except Exception as e:
-        print(f"Error during observatory startup: {e}")
+        handle_error(e, "Error during observatory startup", level="error")
         raise e
     
     yield

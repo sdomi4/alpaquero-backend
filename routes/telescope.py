@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+from observatory.error_handler import handle_error
 from observatory.safety import safety_override
 from observatory.observatory import Observatory
 from routes import get_observatory
@@ -13,7 +14,8 @@ async def telescope_startup(
     try:
         observatory.telescopes[telescope_id].connect()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error connecting to telescope {telescope_id}: {e}")
+        message = handle_error(e, f"Error connecting to telescope {telescope_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
     
 @router.post("/{telescope_id}/shutdown")
 async def telescope_shutdown(
@@ -23,7 +25,8 @@ async def telescope_shutdown(
     try:
         observatory.telescopes[telescope_id].disconnect()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error disconnecting from telescope {telescope_id}: {e}")
+        message = handle_error(e, f"Error disconnecting from telescope {telescope_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
     
 @router.post("/{telescope_id}/park")
 async def telescope_park(
@@ -34,7 +37,8 @@ async def telescope_park(
     try:
         await observatory.telescopes[telescope_id].trigger_park(override=override)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error parking telescope {telescope_id}: {e}")
+        message = handle_error(e, f"Error parking telescope {telescope_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
     
 @router.post("/{telescope_id}/unpark")
 async def telescope_unpark(
@@ -45,7 +49,8 @@ async def telescope_unpark(
     try:
         await observatory.telescopes[telescope_id].trigger_unpark(override=override)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error unparking telescope {telescope_id}: {e}")
+        message = handle_error(e, f"Error unparking telescope {telescope_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
     
 @router.post("/{telescope_id}/slew/{ra}/{dec}")
 async def telescope_slew(
@@ -58,4 +63,5 @@ async def telescope_slew(
     try:
         await observatory.telescopes[telescope_id].trigger_slew(ra, dec, override=override)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error slewing telescope {telescope_id}: {e}")
+        message = handle_error(e, f"Error slewing telescope {telescope_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)

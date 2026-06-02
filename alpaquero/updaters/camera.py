@@ -1,5 +1,6 @@
 from observatory.state import StateManager, CameraState
 from observatory.devices.camera import AlpaqueroCamera
+from observatory.error_handler import handle_error
 
 def camera_updater(camera: "AlpaqueroCamera", id, state: "StateManager" = None):
     if not camera.alpaca.Connected:
@@ -25,4 +26,4 @@ def camera_updater(camera: "AlpaqueroCamera", id, state: "StateManager" = None):
         if hasattr(camera.alpaca, 'LastExposureStartTime'):
             device.last_exposure_start_time = camera.alpaca.LastExposureStartTime
     except Exception as e:
-        print(f"Error updating camera state: {e}")
+        handle_error(e, "Error updating camera state", level="warning")

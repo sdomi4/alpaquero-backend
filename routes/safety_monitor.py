@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+from observatory.error_handler import handle_error
 from observatory.observatory import Observatory
 from routes import get_observatory
 
@@ -12,7 +13,8 @@ async def safety_startup(
     try:
         observatory.safety_monitors[safety_id].connect()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error connecting to safety monitor {safety_id}: {e}")
+        message = handle_error(e, f"Error connecting to safety monitor {safety_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
     
 @router.post("/{safety_id}/shutdown")
 async def safety_shutdown(
@@ -22,4 +24,5 @@ async def safety_shutdown(
     try:
         observatory.safety_monitors[safety_id].disconnect()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error disconnecting from safety monitor {safety_id}: {e}")
+        message = handle_error(e, f"Error disconnecting from safety monitor {safety_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)

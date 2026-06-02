@@ -4,6 +4,7 @@ from asyncio import TaskGroup
 from typing import Union
 from abc import ABC, abstractmethod
 import inspect, traceback
+from observatory.error_handler import handle_error_async
 
 class GracefulCancellation(asyncio.CancelledError):
     pass
@@ -155,7 +156,7 @@ class Sequence:
                 await self.lifecycle.run("after")
                 await self.context.checkpoint()
         except Exception as e:
-            print("Error occurred:", e)
+            await handle_error_async(e, f"Error occurred in sequence {self.name}", level="error")
             await self.lifecycle.run("on_error")
             raise e
         finally:
@@ -222,7 +223,7 @@ class ParallelGroup:
                 await self.lifecycle.run("after")
                 await self.context.checkpoint()
         except Exception as e:
-            print("Error occurred:", e)
+            await handle_error_async(e, f"Error occurred in parallel group {self.name}", level="error")
             traceback.print_exc()
             await self.lifecycle.run("on_error")
             raise e
@@ -341,7 +342,7 @@ class Task:
                 await self.lifecycle.run("after")
                 await self.context.checkpoint()
         except Exception as e:
-            print("Error occurred:", e)
+            await handle_error_async(e, f"Error occurred in task {self.name}", level="error")
             await self.lifecycle.run("on_error")
             raise e
         finally:

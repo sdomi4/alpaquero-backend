@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 from observatory.state import StateManager, TelescopeState
 from observatory.devices.telescope import AlpaqueroTelescope
+from observatory.error_handler import handle_error
 
 if TYPE_CHECKING:
     from observatory.state import StateManager
@@ -24,4 +25,4 @@ def telescope_updater(telescope: "AlpaqueroTelescope", id, state: "StateManager"
                 "dec": telescope.alpaca.TargetDeclination
             }
     except Exception as e:
-        print(f"Error updating telescope state: {e}")
+        handle_error(e, "Error updating telescope state", level="warning")
