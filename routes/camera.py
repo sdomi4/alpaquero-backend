@@ -8,7 +8,6 @@ router = APIRouter(prefix="/camera", tags=["camera"])
 
 class CameraExposureRequest(BaseModel):
     exposure: float
-    base_path: str
     binX: int = 1
     binY: int = 1
     additional_headers: dict = {}
@@ -57,7 +56,7 @@ async def capture_image(
     try:
         await observatory.cameras[camera_id].trigger_expose_and_save(
             body.exposure,
-            body.base_path,
+            observatory.base_path,
             body.binX,
             body.binY,
             body.additional_headers

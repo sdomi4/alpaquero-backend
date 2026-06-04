@@ -55,6 +55,8 @@ class Observatory:
         self.filterwheels: Dict[str, 'AlpaqueroFilterWheel'] = {}
         self.switches: Dict[str, 'AlpaqueroSwitch'] = {}
         self.configured_devices: List[Dict[str, Any]] = []
+        self.webcams: List[str] = []
+        self.base_path: Path = Path(__file__).resolve().parent
 
         self.sequence_registry = SequenceRegistry()
 
@@ -67,6 +69,8 @@ class Observatory:
     def startup(self):
         config = load_observatory_config()
         self.load_sequence_catalog()
+        self.webcams = config.get("webcams", [])
+        self.base_path = Path(config.get("base_path", self.base_path))
         # Create all devices discovered in config
         for device in config.get("devices", []):
             print(device)

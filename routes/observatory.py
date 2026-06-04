@@ -102,3 +102,7 @@ async def list_devices(observatory: Observatory = Depends(get_observatory)):
 @router.get("/state")
 async def get_state(observatory: Observatory = Depends(get_observatory)):
     return observatory.state.snapshot()
+
+@router.get("/cameras")
+async def list_cameras(observatory: Observatory = Depends(get_observatory)):
+    return observatory.webcams

@@ -72,3 +72,10 @@ devices:
     host: "127.0.0.1"
     port: 32323
     device_number: 0
+
+webcams:
+  - "dome_cam"
+  - "uecht_cam"
+  - "heimdall_preview"
+
+base_path: "F:\\repo\\robosot\\output"

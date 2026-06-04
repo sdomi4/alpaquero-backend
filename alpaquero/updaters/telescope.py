@@ -19,10 +19,12 @@ def telescope_updater(telescope: "AlpaqueroTelescope", id, state: "StateManager"
         device.position = {"ra": telescope.alpaca.RightAscension, "dec": telescope.alpaca.Declination}
         device.side_of_pier = telescope.alpaca.SideOfPier
         
-        if hasattr(telescope.alpaca, 'TargetRightAscension'):
+        try:
             device.target = {
                 "ra": telescope.alpaca.TargetRightAscension,
                 "dec": telescope.alpaca.TargetDeclination
             }
+        except Exception as e:
+            pass
     except Exception as e:
         handle_error(e, "Error updating telescope state", level="warning")
