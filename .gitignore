@@ -10,6 +10,7 @@ venv/
 
 # Specific files
 test.py
+de421.bsp
 
 archive/
 tests/

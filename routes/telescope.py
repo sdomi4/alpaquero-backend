@@ -3,6 +3,7 @@ from observatory.error_handler import handle_error
 from observatory.safety import safety_override
 from observatory.observatory import Observatory
 from routes import get_observatory
+from observatory.utils.astro_catalog import get_sun_position, get_moon_position
 
 router = APIRouter(prefix="/telescope", tags=["telescope"])
 
@@ -64,4 +65,18 @@ async def telescope_slew(
         await observatory.telescopes[telescope_id].trigger_slew(ra, dec, override=override)
     except Exception as e:
         message = handle_error(e, f"Error slewing telescope {telescope_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)
+
+@router.post("/{telescope_id}/slew/sun")
+async def slew_to_sun(
+    telescope_id: str,
+    override: bool = Depends(safety_override),
+    observatory: Observatory = Depends(get_observatory)
+):
+    try:
+        position = get_sun_position()
+        await observatory.telescopes[telescope_id].trigger_slew(position["ra"], position["dec"], override=override)
+        return
+    except Exception as e:
+        message = handle_error(e, f"Error slewing to sun with telescope {telescope_id}", level="error")
         raise HTTPException(status_code=500, detail=message)
