@@ -54,6 +54,39 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
                 sleep(10)
         except Exception as e:
             raise CameraError(code="camera_temperature_wait_failed", message=f"Error waiting for camera {self.alpaquero.name} temperature: {e}")
+    
+    @ActionRegistry.register("warm_camera", observatory_arg=False, action_type="device")
+    def warm_up(self):
+        try:
+            if not self.alpaca.CoolerOn:
+                return
+            
+            # gradually warm up by increasing the temperature setpoint in steps
+            current_temp = self.alpaca.CCDTemperature
+            conditions_devices = self.observatory.observing_conditions.keys()
+            conditions_device = self.observatory.state.get_device(conditions_devices[0]) if conditions_devices else None
+            if conditions_device:
+                env_temp = conditions_device.ambient
+            else:
+                env_temp = 15  # default to 15C if no conditions device available
+
+            step = 5
+
+            while current_temp < env_temp:
+                next_temp = min(current_temp + step, env_temp)
+                self.alpaca.SetCCDTemperature = next_temp
+                self.observatory.state.add_action(f"Warming up {self.alpaquero.name}: {current_temp:.1f}C -> {next_temp:.1f}C")
+                
+                while True:
+                    current_temp = self.alpaca.CCDTemperature
+                    if abs(current_temp - next_temp) < 10:
+                        break
+                    sleep(10)
+                
+                self.observatory.state.remove_action(f"Warming up {self.alpaquero.name}: {current_temp:.1f}C -> {next_temp:.1f}C")
+            self.alpaca.CoolerOn = False
+        except Exception as e:
+            raise CameraError(code="camera_warmup_failed", message=f"Error warming up camera {self.alpaquero.name}: {e}")
 
     @ActionRegistry.register("expose_camera", observatory_arg=False, action_type="device")
     def expose(self, exposure: float, binX: int = 1, binY: int = 1, startX: int = 0, startY: int = 0):
@@ -130,7 +163,9 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             raise CameraError(code="fits_creation_failed", message=f"Error creating FITS file for camera {self.alpaquero.name}: {e}")
 
     @ActionRegistry.register("expose_and_save_camera", observatory_arg=False, action_type="device")
-    def expose_and_save(self, exposure: float, base_path: str, binX: int = 1, binY: int = 1, additional_headers: dict = None):
+    def expose_and_save(self, exposure: float, base_path: str = None, binX: int = 1, binY: int = 1, additional_headers: dict = None):
+        if base_path is None:
+            base_path = self.observatory.base_path
         nda, hdr = self.expose(exposure, binX, binY)
         filename = self.create_fits(nda, hdr, additional_headers or {}, base_path)
         self.observatory.state.set_message(
