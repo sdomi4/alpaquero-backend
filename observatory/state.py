@@ -105,6 +105,7 @@ class CameraState(BaseDeviceState):
     last_exposure_duration: Optional[float] = None  # in seconds
     last_exposure_start_time: Optional[str] = None  # FITS standard format, UTC
     set_ccd_temperature: Optional[float] = None
+    percent_completed: Optional[int] = None  # percentage 0-100
 
 class FilterwheelState(BaseDeviceState):
     device_type: Literal["filterwheel"] = "filterwheel"

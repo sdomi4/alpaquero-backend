@@ -35,5 +35,9 @@ def camera_updater(camera: "AlpaqueroCamera", id, state: "StateManager" = None):
             device.last_exposure_start_time = camera.alpaca.LastExposureStartTime
         except Exception as e:
             pass
+        try:
+            device.percent_completed = camera.alpaca.PercentCompleted
+        except Exception as e:
+            pass
     except Exception as e:
         handle_error(e, "Error updating camera state", level="warning")
