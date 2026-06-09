@@ -11,6 +11,7 @@ class CameraExposureRequest(BaseModel):
     binX: int = 1
     binY: int = 1
     additional_headers: dict = {}
+    file_suffix: str = None
 
 @router.post("/{camera_id}/startup")
 async def camera_startup(
@@ -59,7 +60,8 @@ async def capture_image(
             observatory.base_path,
             body.binX,
             body.binY,
-            body.additional_headers
+            body.additional_headers,
+            file_suffix=body.file_suffix
         )
         return {"message": f"Capture started for camera {camera_id}"}
     except Exception as e:
