@@ -8,6 +8,8 @@ import time
 from typing import TYPE_CHECKING, Callable
 import numpy as np
 import astropy.io.fits as fits
+from pathlib import Path
+
 
 if TYPE_CHECKING:
     from observatory.observatory import Observatory
@@ -150,34 +152,62 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             raise CameraError(code="camera_expose_failed", message=f"Error exposing with camera {self.alpaquero.name}: {e}")
 
     @ActionRegistry.register("create_fits", observatory_arg=False, action_type="device")
-    def create_fits(self, nda, hdr, additional_headers: dict, base_path: str, file_suffix: str = None):
+    def create_fits(
+        self,
+        nda,
+        hdr,
+        additional_headers: dict,
+        base_path: str,
+        file_suffix: str | None = None,
+        folder: str | None = None,
+    ):
         try:
             for k, v in additional_headers.items():
                 hdr[k] = v
 
-            hdu = fits.PrimaryHDU(nda, header=hdr)
+            timestamp = time.strftime('%Y%m%d_%H%M%S', time.gmtime())
+            date_folder = time.strftime('%Y-%m-%d', time.gmtime())
+
+            output_dir = Path(base_path)
+
+            if folder:
+                # Optional: avoids accidental nested/absolute paths if folder is user-supplied
+                folder = Path(folder).name
+                output_dir = output_dir / folder / date_folder
+
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            instrument = hdr['INSTRUME']
+
             if file_suffix:
-                filename = f"{base_path}/{hdr['INSTRUME']}_{time.strftime('%Y%m%d_%H%M%S', time.gmtime())}_{file_suffix}.fits"
+                filename = output_dir / f"{instrument}_{timestamp}_{file_suffix}.fits"
             else:
-                filename = f"{base_path}/{hdr['INSTRUME']}_{time.strftime('%Y%m%d_%H%M%S', time.gmtime())}.fits"
+                filename = output_dir / f"{instrument}_{timestamp}.fits"
+
+            hdu = fits.PrimaryHDU(nda, header=hdr)
             hdu.writeto(filename, overwrite=True)
-            return filename
+
+            return str(filename)
+
         except Exception as e:
-            raise CameraError(code="fits_creation_failed", message=f"Error creating FITS file for camera {self.alpaquero.name}: {e}")
+            raise CameraError(
+                code="fits_creation_failed",
+                message=f"Error creating FITS file for camera {self.alpaquero.name}: {e}"
+            )
 
     @ActionRegistry.register("expose_and_save_camera", observatory_arg=False, action_type="device")
-    def expose_and_save(self, exposure: float, base_path: str = None, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None):
+    def expose_and_save(self, exposure: float, base_path: str = None, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None, folder: str = None):
         if base_path is None:
             base_path = self.observatory.base_path
         nda, hdr = self.expose(exposure, binX, binY)
-        filename = self.create_fits(nda, hdr, additional_headers or {}, base_path, file_suffix)
+        filename = self.create_fits(nda, hdr, additional_headers or {}, base_path, file_suffix, folder)
         self.observatory.state.set_message(
             f"camera_capture:{self.id}",
             f"Image captured and saved to {filename}",
         )
         return filename
 
-    async def trigger_expose_and_save(self, exposure: float, base_path: str, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None):
+    async def trigger_expose_and_save(self, exposure: float, base_path: str, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None, folder: str = None):
         self.dispatch_trigger(
             self.expose_and_save,
             exposure,
@@ -186,4 +216,5 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             binY,
             additional_headers,
             file_suffix,
+            folder
         )

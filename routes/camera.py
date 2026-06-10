@@ -61,7 +61,8 @@ async def capture_image(
             body.binX,
             body.binY,
             body.additional_headers,
-            file_suffix=body.file_suffix
+            file_suffix=body.file_suffix,
+            folder="alpaquero"
         )
         return {"message": f"Capture started for camera {camera_id}"}
     except Exception as e:
