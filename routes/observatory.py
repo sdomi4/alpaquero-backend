@@ -106,3 +106,8 @@ async def get_state(observatory: Observatory = Depends(get_observatory)):
 @router.get("/cameras")
 async def list_cameras(observatory: Observatory = Depends(get_observatory)):
     return observatory.webcams
+
+@router.post("/emergency-halt")
+async def emergency_halt(observatory: Observatory = Depends(get_observatory)):
+    observatory.emergency_halt()
+    return {"status": "emergency halt initiated"}
