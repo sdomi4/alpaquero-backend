@@ -46,3 +46,18 @@ sequence:
   - name: "Dome Test Complete"
     action: debug_print
     args: { message: "Dome test sequence complete." }
+
+
+  - name: "Connect to Camera"
+    action: connect_device
+    device: "sim_camera"
+
+  - name: "Take Exposure"
+    action: "expose_and_save_camera"
+    device: "sim_camera"
+    args: { exposure: 5, file_suffix: "dome_test", folder: "dome_test" }
+    register: "test_file"
+  
+  - name: "Debug Exposure Result"
+    action: debug_print
+    args: { message: "Exposure complete, file saved as: {{ test_file }}" }

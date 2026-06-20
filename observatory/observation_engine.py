@@ -19,6 +19,7 @@ class ExecutionContext:
         self._gate.set()
         self._abort = asyncio.Event()
         self.id = generate_context_id()
+        self.results = {}
 
     def request_pause(self):
         self._gate.clear()
@@ -29,6 +30,12 @@ class ExecutionContext:
     def abort(self):
         self._abort.set()
         self._gate.set()
+
+    def register_result(self, name: str, result):
+        self.results[name] = {
+            "result": result,
+            "ok": True,
+        }
 
     def gate_is_set(self):
         return self._gate.is_set()
@@ -233,7 +240,7 @@ class ParallelGroup:
         
 
 class Task:
-    def __init__(self, name: str, action: callable, context: ExecutionContext, hooks: Lifecycle = None, parameters: dict = None, kind: str = "auto", timeout: float = None, executor: concurrent.futures.Executor | None = None):
+    def __init__(self, name: str, action: callable, context: ExecutionContext, hooks: Lifecycle = None, parameters: dict = None, kind: str = "auto", timeout: float = None, executor: concurrent.futures.Executor | None = None, register: str | None = None):
         self.name = name
         self.action = action
         self.lifecycle = hooks if hooks else Lifecycle()
@@ -242,6 +249,7 @@ class Task:
         self.kind = kind  # "auto", "sync", "async", "cpu"
         self.timeout = timeout  # in seconds
         self.executor = executor  # Optional executor for CPU-bound tasks
+        self.register = register
 
     def __str__(self):
         result = f"task:\n  name: {self.name}"
@@ -336,7 +344,9 @@ class Task:
                 print("Executing action for Task:", self.name)
                 result = await self._exec()
                 if asyncio.iscoroutine(result):
-                    await result
+                    result = await result
+                if self.register:
+                    self.context.register_result(self.register, result)
                 await self.context.checkpoint()
                 print("Running Task after hooks:", self.name)
                 await self.lifecycle.run("after")

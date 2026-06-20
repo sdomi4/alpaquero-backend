@@ -1,9 +1,14 @@
 import yaml
-from functools import partial
 from observatory.observation_engine import Sequence, ParallelGroup, Task, SequenceBuilder, Lifecycle
 from observatory.action_registry import ActionRegistry
 from observatory.observatory import Observatory
+import asyncio
 import inspect
+import re
+
+
+TEMPLATE_PATTERN = re.compile(r"{{\s*([^{}]+?)\s*}}")
+IDENTIFIER_PATTERN = re.compile(r"[A-Za-z_]\w*")
 
 class SequenceParser(SequenceBuilder):
     def __init__(self, yaml_string: str, observatory: Observatory, context=None):
@@ -62,32 +67,169 @@ class SequenceParser(SequenceBuilder):
             _observatory_arg = False
             action_name = data["action"]
             args = dict(data.get("args", {}))
+            register = data.get("register")
 
             func, _observatory_arg, action_type = ActionRegistry.get_action(action_name)
 
             original = inspect.unwrap(func)
             original_signature = inspect.signature(original)
 
-            accepted_args = {
-                key: value for key, value in args.items()
-                if key in original_signature.parameters
-            }
-            if "observatory" in original_signature.parameters:
+            bound = self._make_bound_action(
+                func,
+                original_signature,
+                action_name,
+                action_type,
+                args,
+                data,
+                context,
+            )
+
+            return Task(action_name, bound, context, lifecycle, register=register)
+
+        else:
+            raise ValueError("Unknown node type")
+
+    def _make_bound_action(
+        self,
+        func,
+        original_signature,
+        action_name: str,
+        action_type: str,
+        args: dict,
+        data: dict,
+        context,
+    ):
+        def call_action():
+            accepted_args = self._accepted_args(args, original_signature, context)
+            if action_type != "observatory" and "observatory" in original_signature.parameters:
                 print("Adding observatory to accepted args for action:", action_name)
                 accepted_args["observatory"] = self.observatory
 
             if action_type == "device":
-                device_id = data.get("device") or args.get("device")
+                device_id = self._device_id(data, args, context)
                 if not device_id:
                     raise ValueError(f"Device action '{action_name}' requires 'device' argument")
                 device = self.observatory.get_device(device_id)
-                bound = partial(func, device, **accepted_args)
-            elif action_type == "observatory":
-                bound = partial(func, self.observatory, **accepted_args)
+                return func(device, **accepted_args)
+
+            if action_type == "observatory":
+                accepted_args.pop("observatory", None)
+                return func(self.observatory, **accepted_args)
+
+            return func(**accepted_args)
+
+        if asyncio.iscoroutinefunction(func):
+            async def async_bound():
+                result = call_action()
+                if asyncio.iscoroutine(result):
+                    return await result
+                return result
+
+            async_bound.__name__ = action_name
+            return async_bound
+
+        def bound():
+            return call_action()
+
+        bound.__name__ = action_name
+        return bound
+
+    def _accepted_args(self, args: dict, original_signature: inspect.Signature, context):
+        resolved_args = self._resolve_templates(args, context)
+        return {
+            key: value for key, value in resolved_args.items()
+            if key in original_signature.parameters
+        }
+
+    def _device_id(self, data: dict, args: dict, context):
+        device_id = data.get("device") or data.get("device_id") or args.get("device") or args.get("device_id")
+        return self._resolve_templates(device_id, context)
+
+    def _resolve_templates(self, value, context):
+        if isinstance(value, dict):
+            return {
+                key: self._resolve_templates(item, context)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [
+                self._resolve_templates(item, context)
+                for item in value
+            ]
+        if isinstance(value, tuple):
+            return tuple(
+                self._resolve_templates(item, context)
+                for item in value
+            )
+        if not isinstance(value, str):
+            return value
+
+        matches = list(TEMPLATE_PATTERN.finditer(value))
+        if not matches:
+            return value
+
+        if len(matches) == 1 and matches[0].span() == (0, len(value)):
+            return self._resolve_reference(matches[0].group(1), context)
+
+        resolved = value
+        for match in reversed(matches):
+            replacement = str(self._resolve_reference(match.group(1), context))
+            resolved = resolved[:match.start()] + replacement + resolved[match.end():]
+        return resolved
+
+    def _resolve_reference(self, expression: str, context):
+        if context is None or not hasattr(context, "results"):
+            raise ValueError(f"Cannot resolve '{expression}' without an execution context")
+
+        expression = expression.strip()
+        root_match = IDENTIFIER_PATTERN.match(expression)
+        if not root_match:
+            raise ValueError(f"Invalid template reference: {expression}")
+
+        root_name = root_match.group(0)
+        if root_name not in context.results:
+            raise KeyError(f"Unknown registered result: {root_name}")
+
+        value = context.results[root_name]
+        index = root_match.end()
+
+        while index < len(expression):
+            char = expression[index]
+            if char == ".":
+                index += 1
+                field_match = IDENTIFIER_PATTERN.match(expression, index)
+                if not field_match:
+                    raise ValueError(f"Invalid template reference: {expression}")
+                value = self._get_field(value, field_match.group(0))
+                index = field_match.end()
+            elif char == "[":
+                end_index = expression.find("]", index)
+                if end_index == -1:
+                    raise ValueError(f"Invalid template reference: {expression}")
+                key = self._parse_index(expression[index + 1:end_index])
+                value = value[key]
+                index = end_index + 1
+            elif char.isspace():
+                index += 1
             else:
-                bound = partial(func, **accepted_args)
-            
-            return Task(action_name, bound, context, lifecycle)
-        
-        else:
-            raise ValueError("Unknown node type")
+                raise ValueError(f"Invalid template reference: {expression}")
+
+        return value
+
+    def _get_field(self, value, field: str):
+        if isinstance(value, dict):
+            return value[field]
+        return getattr(value, field)
+
+    def _parse_index(self, raw_index: str):
+        raw_index = raw_index.strip()
+        if (
+            len(raw_index) >= 2
+            and raw_index[0] == raw_index[-1]
+            and raw_index[0] in ("'", '"')
+        ):
+            return raw_index[1:-1]
+        try:
+            return int(raw_index)
+        except ValueError:
+            return raw_index

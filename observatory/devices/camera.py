@@ -102,6 +102,10 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
 
             self.alpaca.StartExposure(exposure, True)
 
+            state_device = self.observatory.state.get_device(self.id)
+            state_device.last_exposure_duration = exposure
+            state_device.last_exposure_start_time = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
+
             while not self.alpaca.ImageReady:
                 sleep(0.5)
             

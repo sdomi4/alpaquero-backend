@@ -3,7 +3,7 @@ from observatory.error_handler import handle_error
 from observatory.safety import safety_override
 from observatory.observatory import Observatory
 from routes import get_observatory
-from observatory.utils.astro_catalog import get_sun_position, get_moon_position
+from astro.astro_catalog import get_sun_position, get_moon_position
 
 router = APIRouter(prefix="/telescope", tags=["telescope"])
 
