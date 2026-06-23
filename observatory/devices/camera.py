@@ -149,15 +149,11 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
                     hdr['PEDESTAL'] = self.alpaca.Offset
             except:
                 pass
-<<<<<<< HEAD
-            hdr['HISTORY'] = 'Created using Python alpyca-client library'
-=======
             hdr['HISTORY'] = 'Created using Alpaquero'
             # hdr['OBJECT'] = sun ?
             # hdr['TELESCOP'] = Solar HRSS
             # hdr['OBSERVER'] = 'patrol'
             hdr['CCDTEMP'] = self.alpaca.CCDTemperature
->>>>>>> bcd5c92 (local fixes)
 
             return nda, hdr
         except Exception as e:
