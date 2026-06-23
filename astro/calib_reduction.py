@@ -81,11 +81,16 @@ def calibrate_flats(
         raw_flats_path = Path(os.path.dirname(raw_flats_path))
     if base_path is None:
         base_path = observatory.base_path
+    
     date_folder = time.strftime('%Y-%m-%d', time.gmtime())
     output_path = Path(base_path) / date_folder / output_folder
     output_path.mkdir(parents=True, exist_ok=True)
+    
     if type(master_dark_path) == str:
         master_dark_path = Path(master_dark_path)
+
+    masterdark_filename = os.path.basename(master_dark_path)
+
     raw_flats = ccdp.ImageFileCollection(location=raw_flats_path, glob_include=raw_flat_glob)
 
     subtracted_flats = []
@@ -95,7 +100,7 @@ def calibrate_flats(
         subtracted_flats.append(ccd)
         if save_subtracted_flats:
             subtracted_filename = f"subtracted_{file_name}"
-            ccd.meta["HISTORY"] = f"Subtracted master dark {master_dark_path.name}"
+            ccd.meta["HISTORY"] = f"Subtracted master dark {masterdark_filename}"
             ccd.write(output_path / subtracted_filename, overwrite=True)
 
     combined_flat = ccdp.combine(
@@ -110,6 +115,6 @@ def calibrate_flats(
     )
 
     combined_flat.meta["combined"] = True
-    combined_flat.meta["HISTORY"] = f"Calibrated with master dark {master_dark_path.name}"
+    combined_flat.meta["HISTORY"] = f"Calibrated with master dark {masterdark_filename}"
 
     combined_flat.write(output_path / output_filename, overwrite=True)
