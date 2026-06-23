@@ -80,3 +80,16 @@ async def slew_to_sun(
     except Exception as e:
         message = handle_error(e, f"Error slewing to sun with telescope {telescope_id}", level="error")
         raise HTTPException(status_code=500, detail=message)
+    
+@router.post("/{telescope_id}/trackingrate/{rate}")
+async def set_tracking_rate(
+    telescope_id: str,
+    rate: int,
+    override: bool = Depends(safety_override),
+    observatory: Observatory = Depends(get_observatory)
+):
+    try:
+        observatory.telescopes[telescope_id].tracking_rate(rate)
+    except Exception as e:
+        message = handle_error(e, f"Error setting tracking rate for {telescope_id}", level="error")
+        raise HTTPException(status_code=500, detail=message)

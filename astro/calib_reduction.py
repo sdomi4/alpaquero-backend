@@ -3,7 +3,7 @@ from pathlib import Path
 
 from astropy.nddata import CCDData
 from astropy.stats import mad_std
-
+import os
 import ccdproc as ccdp
 import numpy as np
 from astropy import units as u
@@ -13,8 +13,8 @@ def _inv_median(a):
 
 @ActionRegistry.register("create_master_dark", observatory_arg=False, action_type="calibration")
 def create_mdark(
-        calibrated_path: Path,
-        output_path: Path,
+        calibrated_path: Path | str,
+        output_path: Path | str,
         dark_glob: str,
         output_filename: str,
         method: str = "average",
@@ -22,13 +22,18 @@ def create_mdark(
         sigma_clip_low_thresh: float = 5,
         sigma_clip_high_thresh: float = 5
     ):
-
+    print("calibrated path:", calibrated_path)
+    if type(calibrated_path) == str:
+        calibrated_path = Path(os.path.dirname(calibrated_path))
+        print("fixed path?", calibrated_path)
+    if type(output_path) == str:
+        output_path = Path(output_path)
     dark_images = ccdp.ImageFileCollection(location=calibrated_path, glob_include=dark_glob)
-
-    dark_ccds = [
-        CCDData.read(path, unit=u.adu)
-        for path in dark_images.files
-    ]
+    print(dark_images.files)
+    dark_ccds = []
+    
+    for ccd, file_name in dark_images.ccds(ccd_kwargs={"unit": "adu"}, return_fname=True):
+        dark_ccds.append(ccd)
 
     combined_dark = ccdp.combine(
         dark_ccds,
@@ -41,6 +46,8 @@ def create_mdark(
     combined_dark.meta["combined"] = True
 
     combined_dark.write(output_path / output_filename, overwrite=True)
+
+    return str(output_path) + "/" + output_filename
 
 @ActionRegistry.register("calibrate_flats", observatory_arg=False, action_type="calibration")
 def calibrate_flats(
@@ -55,6 +62,9 @@ def calibrate_flats(
         sigma_clip_high_thresh: float = 5,
         save_subtracted_flats: bool = False
     ):
+    print(raw_flats_path)
+    if type(raw_flats_path) == str:
+        raw_flats_path = Path(os.path.dirname(raw_flats_path))
     raw_flats = ccdp.ImageFileCollection(location=raw_flats_path, glob_include=raw_flat_glob)
 
     subtracted_flats = []

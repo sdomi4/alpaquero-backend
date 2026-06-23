@@ -44,6 +44,14 @@ from observatory.utils.config import load_observatory_config
 
 from observatory.utils.debug import debug_print
 
+<<<<<<< HEAD
+=======
+#import for invocation function decorator
+from observatory.invocations import telescope_boot
+from observatory.invocations import telescope_goto
+import astro.calib_reduction
+
+>>>>>>> bcd5c92 (local fixes)
 class Observatory:
     def __init__(self):
         self.domes: Dict[str, 'AlpaqueroDome'] = {}
