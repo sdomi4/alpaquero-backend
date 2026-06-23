@@ -176,12 +176,12 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             timestamp = time.strftime('%Y%m%d_%H%M%S', time.gmtime())
             date_folder = time.strftime('%Y-%m-%d', time.gmtime())
 
-            output_dir = Path(base_path)
+            output_dir = Path(base_path) / date_folder
 
             if folder:
                 # Optional: avoids accidental nested/absolute paths if folder is user-supplied
                 folder = Path(folder).name
-                output_dir = output_dir / folder / date_folder
+                output_dir = output_dir / folder
 
             output_dir.mkdir(parents=True, exist_ok=True)
 
