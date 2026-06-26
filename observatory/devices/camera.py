@@ -168,6 +168,7 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
         base_path: str,
         file_suffix: str | None = None,
         folder: str | None = None,
+        preview: bool = True
     ):
         try:
             for k, v in additional_headers.items():
@@ -195,6 +196,13 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             hdu = fits.PrimaryHDU(nda, header=hdr)
             hdu.writeto(filename, overwrite=True)
 
+            if preview:
+                self.observatory.add_capture_preview(
+                    name=filename.name,
+                    img=nda,
+                    timestamp=timestamp
+                )
+
             return str(filename)
 
         except Exception as e:
@@ -204,18 +212,18 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             )
 
     @ActionRegistry.register("expose_and_save_camera", observatory_arg=False, action_type="device")
-    def expose_and_save(self, exposure: float, base_path: str = None, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None, folder: str = None):
+    def expose_and_save(self, exposure: float, base_path: str = None, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None, folder: str = None, preview: bool = True):
         if base_path is None:
             base_path = self.observatory.base_path
         nda, hdr = self.expose(exposure, binX, binY)
-        filename = self.create_fits(nda, hdr, additional_headers or {}, base_path, file_suffix, folder)
+        filename = self.create_fits(nda, hdr, additional_headers or {}, base_path, file_suffix, folder, preview=preview)
         self.observatory.state.set_message(
             f"camera_capture:{self.id}",
             f"Image captured and saved to {filename}",
         )
         return filename
 
-    async def trigger_expose_and_save(self, exposure: float, base_path: str, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None, folder: str = None):
+    async def trigger_expose_and_save(self, exposure: float, base_path: str, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None, folder: str = None, preview: bool = True):
         self.dispatch_trigger(
             self.expose_and_save,
             exposure,
@@ -224,5 +232,6 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             binY,
             additional_headers,
             file_suffix,
-            folder
+            folder,
+            preview
         )

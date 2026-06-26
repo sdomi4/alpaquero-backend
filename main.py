@@ -18,6 +18,7 @@ from routes.observing_conditions import router as observing_conditions_router
 from routes.safety_monitor import router as safety_monitor_router
 from routes.observatory import router as observatory_router
 from routes.status import router as status_router
+from routes.preview import router as preview_router
 
 
 @asynccontextmanager
@@ -59,3 +60,4 @@ app.include_router(observing_conditions_router)
 app.include_router(safety_monitor_router)
 app.include_router(observatory_router)
 app.include_router(status_router)
+app.include_router(preview_router)

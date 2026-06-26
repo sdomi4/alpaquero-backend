@@ -41,6 +41,7 @@ from observatory.sequence_registry import SequenceRegistry
 
 from observatory.status import observatory_loop
 from observatory.utils.config import load_observatory_config
+from observatory.preview import CapturePreview, CaptureBuffer
 
 from observatory.utils.debug import debug_print
 
@@ -59,6 +60,7 @@ class Observatory:
         self.configured_devices: List[Dict[str, Any]] = []
         self.webcams: List[str] = []
         self.base_path: Path = Path(__file__).resolve().parent
+        self.capture_buffer = CaptureBuffer(maxlen=10)
 
         self.sequence_registry = SequenceRegistry()
 
@@ -320,3 +322,13 @@ class Observatory:
     @ActionRegistry.register("set_status", observatory_arg=True, action_type="observatory")
     def set_status(self, status: str):
         self.state.set_status(status)
+
+    def add_capture_preview(self, name: str, img, timestamp):
+        preview = CapturePreview(name, img, timestamp)
+        self.capture_buffer.push(preview)
+
+    def get_capture_previews(self, n: int):
+        return self.capture_buffer.get_previews(n)
+    
+    def get_full_preview_image(self, name: str):
+        return self.capture_buffer.get_full_image(name)

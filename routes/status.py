@@ -32,3 +32,4 @@ async def error_websocket(websocket: WebSocket):
         await handle_error_async(e, "Error in error websocket", level="warning")
     finally:
         disconnect_error_websocket(websocket)
+
