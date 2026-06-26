@@ -5,6 +5,7 @@ from alpaca import camera
 from observatory.errors import CameraError
 from time import sleep
 import time
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Callable
 import numpy as np
 import astropy.io.fits as fits
@@ -93,6 +94,7 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
     @ActionRegistry.register("expose_camera", observatory_arg=False, action_type="device")
     def expose(self, exposure: float, binX: int = 1, binY: int = 1, startX: int = 0, startY: int = 0):
         try:
+
             self.alpaca.BinX = binX
             self.alpaca.BinY = binY
             self.alpaca.StartX = startX
@@ -100,11 +102,15 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             self.alpaca.NumX = self.alpaca.CameraXSize // self.alpaca.BinX
             self.alpaca.NumY = self.alpaca.CameraYSize // self.alpaca.BinY
 
+            timestamp_before = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
+            print("time before exposure start", timestamp_before)
             self.alpaca.StartExposure(exposure, True)
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
+            print("time after exposure start", timestamp)
 
             state_device = self.observatory.state.get_device(self.id)
             state_device.last_exposure_duration = exposure
-            state_device.last_exposure_start_time = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
+            state_device.last_exposure_start_time = timestamp
 
             while not self.alpaca.ImageReady:
                 sleep(0.5)
@@ -134,7 +140,7 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
                 hdr['BSCALE'] = 1.0
             hdr['EXPOSURE'] = exposure
             hdr['EXPTIME'] = exposure
-            hdr['DATE-OBS'] = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
+            hdr['DATE-OBS'] = timestamp
             hdr['TIMESYS'] = 'UTC'
             hdr['XBINNING'] = self.alpaca.BinX
             hdr['YBINNING'] = self.alpaca.BinY
@@ -151,9 +157,36 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
                 pass
             hdr['HISTORY'] = 'Created using Alpaquero'
             # hdr['OBJECT'] = sun ?
-            # hdr['TELESCOP'] = Solar HRSS
-            # hdr['OBSERVER'] = 'patrol'
+            # hdr['TELESCOP'] = Name of optics from config
+            # hdr['OBSERVER'] = 'patrol' -> from user management
+            # hdr['OBSERVAT'] = Sonnenturm Uecht
+            # hdr['SETTEMP] = value from alpaquero
             hdr['CCDTEMP'] = self.alpaca.CCDTemperature
+            # ['XPIXSZ'] = pixel size in micron from camera driver hopefully
+            # ['YPIXSZ'] = pixel size in micron from camera driver hopefully
+            # ['XORGSUBF'] = subframe
+            # ['YORGSUBF'] = subframe
+            # ['READOUTM'] = speed of readout(?) from driver: str
+            # ['FILTNAME'] = filterwheel
+            # ['FILTER'] = Filter at time of exposure
+            # ['IMAGETYP'] = str: Lightframe / Dark / Flat -> google for standard
+            # ['FOCALLEN'] = focal length of telescope from config
+            # ['APTDIA'] = aperture diameter from config
+            # ['APTERA'] = aperture era from config
+            # ['EGAIN'] = from camera driver electric
+            # ['OBJCTRA'] = str: from telescope?
+            # ['OBJCTDEC'] = str: from telescope?
+            # ['OBJCTALT'] = str: from telescope?
+            # ['OBJCTAZ'] = str: from telescope?
+            # ['OBJCTHA'] = str: from telescope?
+            # ['PIERSIDE'] = str: from telescope?
+            # ['SITELAT'] = str: from config
+            # ['SITELON'] = str: from config
+            # ['FOCUSPOS'] = number (if focuser present)
+            # ['FOCUSSSZ'] = step size
+            # ['FOCUSTEM'] = focuser temp
+            # ['JD'] = julianisches datum
+            # ['FLIPSTAT']
 
             return nda, hdr
         except Exception as e:
