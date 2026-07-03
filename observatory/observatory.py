@@ -36,6 +36,8 @@ from observatory.devices.telescope import AlpaqueroTelescope
 from alpaquero.factories.telescope import telescope_factory
 from alpaquero.updaters.telescope import telescope_updater
 
+from observatory.instrument import Instrument, InstrumentRegistry
+
 from observatory.state import StateManager
 from observatory.sequence_registry import SequenceRegistry
 
@@ -43,8 +45,8 @@ from observatory.status import observatory_loop
 from observatory.utils.config import load_observatory_config
 from observatory.preview import CapturePreview, CaptureBuffer
 
-from observatory.utils.debug import debug_print
-
+# Imports for ActionRegistry
+import observatory.utils.debug
 import astro.calib_reduction, astro.astro_catalog, astro.platesolve
 
 class Observatory:
@@ -63,6 +65,13 @@ class Observatory:
         self.capture_buffer = CaptureBuffer(maxlen=10)
 
         self.sequence_registry = SequenceRegistry()
+
+        # overwritten from config in startup()
+        self.name = "Alpaquero Observatory"
+        self.latitude = 0.0
+        self.longitude = 0.0
+
+        self.instrument_registry = None  # Will be initialized in startup() after loading config
 
         self.status = "initializing"
 
@@ -252,6 +261,26 @@ class Observatory:
             if auto_connect:
                 print("="*40, "reached auto connect for", device_type, name)
                 device_alpaquero.connect()
+
+        observatory_config = config.get("observatory", {})
+        self.name = observatory_config.get("name", self.name)
+        self.latitude = observatory_config.get("latitude", self.latitude)
+        self.longitude = observatory_config.get("longitude", self.longitude)
+        
+
+        instruments = []
+        for instrument in observatory_config.get("instruments", []):
+            instrument_obj = Instrument(
+                id=instrument.get("id"),
+                name=instrument.get("name"),
+                telescope=instrument.get("telescope"),
+                focal_length=instrument.get("focal_length"),
+                aperture_diameter=instrument.get("aperture_diameter"),
+                devices=instrument.get("devices", [])
+            )
+            instruments.append(instrument_obj)
+        self.instrument_registry = InstrumentRegistry(instruments)
+
         # Start observatory loops
         asyncio.create_task(observatory_loop(self.state, self))
 

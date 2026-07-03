@@ -157,10 +157,10 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
                 pass
             hdr['HISTORY'] = 'Created using Alpaquero'
             # hdr['OBJECT'] = sun ?
-            # hdr['TELESCOP'] = Name of optics from config
+            hdr['TELESCOP'] = self.observatory.instrument_registry.get_by_device(self.id)[0].telescope if self.observatory.instrument_registry.get_by_device(self.id) else "Unknown"
             # hdr['OBSERVER'] = 'patrol' -> from user management
-            # hdr['OBSERVAT'] = Sonnenturm Uecht
-            # hdr['SETTEMP] = value from alpaquero
+            hdr['OBSERVAT'] = self.observatory.name
+            hdr['SETTEMP'] = self.alpaca.SetCCDTemperature
             hdr['CCDTEMP'] = self.alpaca.CCDTemperature
             # ['XPIXSZ'] = pixel size in micron from camera driver hopefully
             # ['YPIXSZ'] = pixel size in micron from camera driver hopefully
@@ -170,9 +170,9 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             # ['FILTNAME'] = filterwheel
             # ['FILTER'] = Filter at time of exposure
             # ['IMAGETYP'] = str: Lightframe / Dark / Flat -> google for standard
-            # ['FOCALLEN'] = focal length of telescope from config
-            # ['APTDIA'] = aperture diameter from config
-            # ['APTERA'] = aperture era from config
+            hdr['FOCALLEN'] = self.observatory.instrument_registry.get_by_device(self.id)[0].focal_length if self.observatory.instrument_registry.get_by_device(self.id) else "Unknown"
+            hdr['APTDIA'] = self.observatory.instrument_registry.get_by_device(self.id)[0].aperture_diameter if self.observatory.instrument_registry.get_by_device(self.id) else "Unknown"
+            hdr['APTAREA'] = self.observatory.instrument_registry.get_by_device(self.id)[0].aperture_area if self.observatory.instrument_registry.get_by_device(self.id) else "Unknown"
             # ['EGAIN'] = from camera driver electric
             # ['OBJCTRA'] = str: from telescope?
             # ['OBJCTDEC'] = str: from telescope?
@@ -180,8 +180,8 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             # ['OBJCTAZ'] = str: from telescope?
             # ['OBJCTHA'] = str: from telescope?
             # ['PIERSIDE'] = str: from telescope?
-            # ['SITELAT'] = str: from config
-            # ['SITELON'] = str: from config
+            hdr['SITELAT'] = self.observatory.latitude
+            hdr['SITELON'] = self.observatory.longitude
             # ['FOCUSPOS'] = number (if focuser present)
             # ['FOCUSSSZ'] = step size
             # ['FOCUSTEM'] = focuser temp
