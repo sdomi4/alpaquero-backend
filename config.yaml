@@ -79,3 +79,22 @@ webcams:
   - "heimdall_preview"
 
 base_path: "F:\\repo\\robosot\\output"
+
+
+observatory:
+  observat: "Alpaca Simulator Observatory"
+  sitelat: 0
+  sitelon: 0
+  instruments:
+    - id: "sim"
+      name: "Simulator"
+      
+      telescope: "Telescope"
+      focal_length: 10
+      aperture_diameter: 1
+
+      devices:
+      - telescope: "sim_telescope"
+      - camera: "sim_camera"
+      - cover: "sim_cover"
+      - filterwheel: "sim_filterwheel"

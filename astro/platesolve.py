@@ -59,3 +59,33 @@ def pinpoint(
         del plate
         gc.collect()
         pythoncom.CoUninitialize()
+
+@ActionRegistry.register("pinpoint_folder", observatory_arg=False, action_type="analysis")
+def pinpoint_folder(
+        folder_path: str | Path,
+        catalog: int,
+        catalog_path: str,
+        ra: float,
+        dec: float,
+        arcsec_per_pixel: float | None = None,
+        glob: str = "*.fits"
+):
+    folder_path = Path(folder_path)
+    fits_files = list(folder_path.glob(glob))
+
+    results = []
+
+    for fits_file in fits_files:
+        result = pinpoint(
+            fits_path=fits_file,
+            catalog=catalog,
+            catalog_path=catalog_path,
+            ra=ra,
+            dec=dec,
+            arcsec_per_pixel=arcsec_per_pixel
+        )
+        results.append({
+            "file": str(fits_file),
+            "result": result
+        })
+    return results

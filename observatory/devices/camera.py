@@ -160,28 +160,49 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             hdr['TELESCOP'] = self.observatory.instrument_registry.get_by_device(self.id)[0].telescope if self.observatory.instrument_registry.get_by_device(self.id) else "Unknown"
             # hdr['OBSERVER'] = 'patrol' -> from user management
             hdr['OBSERVAT'] = self.observatory.name
-            hdr['SETTEMP'] = self.alpaca.SetCCDTemperature
-            hdr['CCDTEMP'] = self.alpaca.CCDTemperature
-            # ['XPIXSZ'] = pixel size in micron from camera driver hopefully
-            # ['YPIXSZ'] = pixel size in micron from camera driver hopefully
-            # ['XORGSUBF'] = subframe
-            # ['YORGSUBF'] = subframe
-            # ['READOUTM'] = speed of readout(?) from driver: str
-            # ['FILTNAME'] = filterwheel
-            # ['FILTER'] = Filter at time of exposure
-            # ['IMAGETYP'] = str: Lightframe / Dark / Flat -> google for standard
-            hdr['FOCALLEN'] = self.observatory.instrument_registry.get_by_device(self.id)[0].focal_length if self.observatory.instrument_registry.get_by_device(self.id) else "Unknown"
-            hdr['APTDIA'] = self.observatory.instrument_registry.get_by_device(self.id)[0].aperture_diameter if self.observatory.instrument_registry.get_by_device(self.id) else "Unknown"
-            hdr['APTAREA'] = self.observatory.instrument_registry.get_by_device(self.id)[0].aperture_area if self.observatory.instrument_registry.get_by_device(self.id) else "Unknown"
-            # ['EGAIN'] = from camera driver electric
-            # ['OBJCTRA'] = str: from telescope?
-            # ['OBJCTDEC'] = str: from telescope?
-            # ['OBJCTALT'] = str: from telescope?
-            # ['OBJCTAZ'] = str: from telescope?
-            # ['OBJCTHA'] = str: from telescope?
-            # ['PIERSIDE'] = str: from telescope?
             hdr['SITELAT'] = self.observatory.latitude
             hdr['SITELON'] = self.observatory.longitude
+            hdr['SETTEMP'] = self.alpaca.SetCCDTemperature
+            hdr['CCDTEMP'] = self.alpaca.CCDTemperature
+            hdr['XPIXSZ'] = self.alpaca.PixelSizeX
+            hdr['YPIXSZ'] = self.alpaca.PixelSizeY
+            hdr['XORGSUBF'] = self.alpaca.StartX
+            hdr['YORGSUBF'] = self.alpaca.StartY
+            hdr['READOUTM'] = self.alpaca.ReadoutModes[self.alpaca.ReadoutMode]
+
+            instrument = self.observatory.instrument_registry.get_by_device(self.id)[0] if self.observatory.instrument_registry.get_by_device(self.id) else None
+            if instrument:
+                devices = {
+                    device_type: device_id
+                    for device in instrument.devices
+                    for device_type, device_id in device.items()
+                }
+
+                filterwheel_id = devices.get("filterwheel")
+                if filterwheel_id:
+                    filterwheel = self.observatory.filterwheels[filterwheel_id]
+                    filter_position = filterwheel.alpaca.Position
+                    hdr['FILTNAME'] = filterwheel.name
+                    hdr['FILTER'] = filterwheel.alpaca.Names[filter_position]
+
+                # ['IMAGETYP'] = str: Lightframe / Dark / Flat -> google for standard
+                hdr['FOCALLEN'] = instrument.focal_length if instrument else "Unknown"
+                hdr['APTDIA'] = instrument.aperture_diameter if instrument else "Unknown"
+                hdr['APTAREA'] = instrument.aperture_area if instrument else "Unknown"
+
+                
+            # ['EGAIN'] = from camera driver electric
+            
+                if "telescope" in devices:
+                    telescope_device = self.observatory.telescopes[devices["telescope"]]
+                    hdr['OBJCTRA'] = telescope_device.alpaca.RightAscension
+                    hdr['OBJCTDEC'] = telescope_device.alpaca.Declination
+                    hdr['OBJCTALT'] = telescope_device.alpaca.Altitude
+                    hdr['OBJCTAZ'] = telescope_device.alpaca.Azimuth
+                    # ['OBJCTHA'] = str: from telescope?
+
+                    hdr['PIERSIDE'] = telescope_device.alpaca.SideOfPier            
+            
             # ['FOCUSPOS'] = number (if focuser present)
             # ['FOCUSSSZ'] = step size
             # ['FOCUSTEM'] = focuser temp

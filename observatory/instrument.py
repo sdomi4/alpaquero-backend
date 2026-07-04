@@ -27,6 +27,9 @@ class Instrument:
     def aperture_area(self) -> float:
         radius = self.aperture_diameter / 2
         return 3.141592653589793 * radius**2
+    
+    def __str__(self):
+        return f"Instrument: {self.name}, Devices: {self.devices}"
 
 class InstrumentRegistry:
     def __init__(self, instruments: list["Instrument"]):
@@ -34,9 +37,13 @@ class InstrumentRegistry:
         self._by_device: dict[str, set[str]] = defaultdict(set)
 
         for instrument in instruments:
-            for device_id in instrument.devices:
-                self._by_device[device_id].add(instrument.id)
+            for device in instrument.devices:
+                for _, device_id in device.items():
+                    self._by_device[device_id].add(instrument.id)
 
+    def __str__(self):
+        return f"InstrumentRegistry: {list(self.instruments.keys())}"
+    
     def get_by_device(self, device_id: str) -> list["Instrument"]:
         return [
             self.instruments[instrument_id]

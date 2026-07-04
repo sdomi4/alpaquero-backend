@@ -270,6 +270,7 @@ class Observatory:
 
         instruments = []
         for instrument in observatory_config.get("instruments", []):
+            print("Loading instrument:", instrument)
             instrument_obj = Instrument(
                 id=instrument.get("id"),
                 name=instrument.get("name"),
@@ -279,6 +280,7 @@ class Observatory:
                 devices=instrument.get("devices", [])
             )
             instruments.append(instrument_obj)
+        print("Loaded instruments:", [instr.name for instr in instruments])
         self.instrument_registry = InstrumentRegistry(instruments)
 
         # Start observatory loops
