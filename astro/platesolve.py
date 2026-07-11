@@ -71,8 +71,11 @@ def pinpoint_folder(
         glob: str = "*.fits"
 ):
     folder_path = Path(folder_path)
+    print("looking for files in", folder_path, "with glob", glob)
+    print("files in folder", list(folder_path.glob(".fit")))
     fits_files = list(folder_path.glob(glob))
 
+    print("pinpointing files:", fits_files)
     results = []
 
     for fits_file in fits_files:
@@ -84,6 +87,7 @@ def pinpoint_folder(
             dec=dec,
             arcsec_per_pixel=arcsec_per_pixel
         )
+        print(result)
         results.append({
             "file": str(fits_file),
             "result": result

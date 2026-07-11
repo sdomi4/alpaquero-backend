@@ -4,6 +4,8 @@ from observatory.error_handler import handle_error
 from observatory.observatory import Observatory
 from routes import get_observatory
 
+from astro.platesolve import pinpoint_folder
+
 
 router = APIRouter(prefix="/astro", tags=["astro"])
 
@@ -22,8 +24,9 @@ async def pinpoint_folder_endpoint(
     observatory: Observatory = Depends(get_observatory)
 ):
     try:
-        result = observatory.astro.pinpoint_folder(
+        result = pinpoint_folder(
             folder_path=request.folder_path,
+            glob=request.glob,
             catalog=request.catalog,
             catalog_path=request.catalog_path,
             ra=request.ra,
