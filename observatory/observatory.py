@@ -264,8 +264,8 @@ class Observatory:
 
         observatory_config = config.get("observatory", {})
         self.name = observatory_config.get("name", self.name)
-        self.latitude = observatory_config.get("latitude", self.latitude)
-        self.longitude = observatory_config.get("longitude", self.longitude)
+        self.latitude = observatory_config.get("sitelat", self.latitude)
+        self.longitude = observatory_config.get("sitelon", self.longitude)
         
 
         instruments = []
