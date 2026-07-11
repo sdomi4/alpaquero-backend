@@ -74,7 +74,7 @@ class AlpaqueroTelescope(ObservatoryDevice[telescope.Telescope]):
 
     @ActionRegistry.register("slew_telescope", observatory_arg=False, action_type="device")
     @require_conditions(weather_is_safe, dome_is_open)
-    def slew(self, ra: float, dec: float, override: bool = False):
+    def slew(self, ra: float, dec: float, tracking_rate: int = None, override: bool = False):
         state_device = self.observatory.state.get_device(self.id)
         try:
             if self.alpaca.AtPark:
@@ -83,6 +83,8 @@ class AlpaqueroTelescope(ObservatoryDevice[telescope.Telescope]):
             self.alpaca.TargetRightAscension = ra
             self.alpaca.TargetDeclination = dec
             self.alpaca.Tracking = True
+            if tracking_rate:
+                self.tracking_rate(tracking_rate=tracking_rate)
             self.alpaca.SlewToTargetAsync()
             
             self.observatory.state.add_action(f"Slewing {self.alpaquero.name} to target")
