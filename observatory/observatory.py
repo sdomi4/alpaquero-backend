@@ -306,6 +306,10 @@ class Observatory:
                 self.sequence_registry.add_sequence(sequence_builder)
             except Exception as e:
                 handle_error(e, f"Skipping invalid sequence file {sequence_path}", level="warning")
+    
+    def refresh_sequence_catalog(self):
+        self.sequence_registry.clear()
+        self.load_sequence_catalog()
 
     def emergency_shutdown(self):
         print("Performing emergency shutdown procedures")
@@ -363,3 +367,5 @@ class Observatory:
     
     def get_full_preview_image(self, name: str):
         return self.capture_buffer.get_full_image(name)
+    
+

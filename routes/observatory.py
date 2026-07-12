@@ -93,6 +93,11 @@ async def upload_sequence(
         message = handle_error(e, "Failed to parse sequence", level="error")
         raise HTTPException(status_code=400, detail=message)
     
+@router.post("/sequences/refresh")
+async def refresh_sequence_catalog(observatory: Observatory = Depends(get_observatory)):
+    observatory.refresh_sequence_catalog()
+    return {"sequences": observatory.sequence_registry.list_sequences()}
+    
 
 @router.get("/devices")
 async def list_devices(observatory: Observatory = Depends(get_observatory)):

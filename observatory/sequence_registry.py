@@ -10,6 +10,10 @@ class SequenceRegistry:
         self.sequences = {} # key = builder name, value = builder instance
         self.registry = {} # key = context id, value = (sequence name, context instance)
 
+    def clear(self):
+        self.sequences.clear()
+        self.registry.clear()
+
     def add_sequence(self, builder: SequenceBuilder):
         self.sequences[builder.name] = builder
 
