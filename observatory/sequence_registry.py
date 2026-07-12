@@ -21,10 +21,10 @@ class SequenceRegistry:
         return list(self.sequences.keys())
 
     def run_sequence(self, observatory: 'Observatory', builder: SequenceBuilder, **params):
-        context = ExecutionContext()
+        context = ExecutionContext(observatory=observatory)
         # regenerate context if id is taken
         while context.id in self.registry:
-            context = ExecutionContext()
+            context = ExecutionContext(observatory=observatory)
         self.registry[context.id] = (builder.name, context) # state tuple (name, context instance)
         observatory.state.add_sequence(context.id, builder.name)
         # Execute the sequence with the new context

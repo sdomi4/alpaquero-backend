@@ -16,6 +16,7 @@ class SequenceState(BaseModel):
     context_id: str
     sequence_name: str
     status: str = "running"
+    info: Optional[str] = None
 
 class BaseDeviceState(BaseModel):
     id: str
@@ -181,6 +182,13 @@ class StateManager:
         with self._lock:
             try:
                 self._snapshot.sequences[context_id].status = status
+            except KeyError:
+                raise ValueError(f"Sequence with context_id {context_id} does not exist.")
+            
+    def set_sequence_info(self, context_id: str, info: str):
+        with self._lock:
+            try:
+                self._snapshot.sequences[context_id].info = info
             except KeyError:
                 raise ValueError(f"Sequence with context_id {context_id} does not exist.")
 

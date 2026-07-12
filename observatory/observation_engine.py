@@ -5,6 +5,9 @@ from typing import Union
 from abc import ABC, abstractmethod
 import inspect, traceback
 from observatory.error_handler import handle_error_async
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from observatory.observatory import Observatory
 
 class GracefulCancellation(asyncio.CancelledError):
     pass
@@ -14,12 +17,13 @@ def generate_context_id():
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=12))
 
 class ExecutionContext:
-    def __init__(self):
+    def __init__(self, observatory: 'Observatory' = None):
         self._gate = asyncio.Event()
         self._gate.set()
         self._abort = asyncio.Event()
         self.id = generate_context_id()
         self.results = {}
+        self.observatory = observatory
 
     def request_pause(self):
         self._gate.clear()
@@ -68,7 +72,8 @@ class Lifecycle:
             "finally": [],
             "on_error": [],
             "when": [],
-            "repeat": 1
+            "repeat": 1,
+            "update": False
         }
 
     def __str__(self):
@@ -157,6 +162,14 @@ class Sequence:
                     await self.context.checkpoint()
                     assert isinstance(step, (Sequence, ParallelGroup, Task)), "Step must be a Sequence, ParallelGroup, or Task"
                     print("Running step:", step.name)
+                    if self.lifecycle.hooks.get("update", True):
+                        info_text = f"Step: {step.name}"
+                        if self.lifecycle.hooks.get("repeat", 1) > 1:
+                            info_text += f" (repeat {i + 1})"
+                        self.context.observatory.state.set_sequence_info(
+                            self.context.id,
+                            info_text
+                        )
                     await step.run()
                 await self.context.checkpoint()
                 print("Running Sequence after hooks")
@@ -220,6 +233,14 @@ class ParallelGroup:
                 await self.lifecycle.run("before")
                 try:
                     print(f"Task List: {self.tasks}")
+                    if self.lifecycle.hooks.get("update", True):
+                        info_text = f"ParallelGroup: {self.name}"
+                        if self.lifecycle.hooks.get("repeat", 1) > 1:
+                            info_text += f" (repeat {i + 1})"
+                        self.context.observatory.state.set_sequence_info(
+                            self.context.id,
+                            info_text
+                        )
                     async with TaskGroup() as tg:
                         for task in self.tasks:
                             tg.create_task(task.run())
@@ -342,6 +363,14 @@ class Task:
                 await self.lifecycle.run("before")
                 await self.context.checkpoint()
                 print("Executing action for Task:", self.name)
+                if self.lifecycle.hooks.get("update", True):
+                    info_text = f"Task: {self.name}"
+                    if self.lifecycle.hooks.get("repeat", 1) > 1:
+                        info_text += f" (repeat {i + 1})"
+                    self.context.observatory.state.set_sequence_info(
+                        self.context.id,
+                        info_text
+                    )
                 result = await self._exec()
                 if asyncio.iscoroutine(result):
                     result = await result
