@@ -104,6 +104,10 @@ async def list_devices(observatory: Observatory = Depends(get_observatory)):
     # in future, also expose device capabilities
     return observatory.configured_devices
 
+@router.get("/instruments")
+async def list_instruments(observatory: Observatory = Depends(get_observatory)):
+    return observatory.configured_instruments
+
 @router.get("/state")
 async def get_state(observatory: Observatory = Depends(get_observatory)):
     return observatory.state.snapshot()

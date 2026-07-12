@@ -60,6 +60,7 @@ class Observatory:
         self.filterwheels: Dict[str, 'AlpaqueroFilterWheel'] = {}
         self.switches: Dict[str, 'AlpaqueroSwitch'] = {}
         self.configured_devices: List[Dict[str, Any]] = []
+        self.configured_instruments: List[Dict[str, Any]] = []
         self.webcams: List[str] = []
         self.base_path: Path = Path(__file__).resolve().parent
         self.capture_buffer = CaptureBuffer(maxlen=10)
@@ -280,6 +281,12 @@ class Observatory:
                 devices=instrument.get("devices", [])
             )
             instruments.append(instrument_obj)
+
+            self.configured_instruments.append({
+                "id": instrument_obj.id,
+                "name": instrument_obj.name,
+                "devices": instrument_obj.devices
+            })
         print("Loaded instruments:", [instr.name for instr in instruments])
         self.instrument_registry = InstrumentRegistry(instruments)
 
