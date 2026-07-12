@@ -222,20 +222,30 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
         base_path: str,
         file_suffix: str | None = None,
         folder: str | None = None,
-        preview: bool = True
+        preview: bool = True,
+        night_folder: bool = True
     ):
         try:
             for k, v in additional_headers.items():
                 hdr[k] = v
 
             timestamp = time.strftime('%Y%m%d_%H%M%S', time.gmtime())
-            date_folder = time.strftime('%Y-%m-%d', time.gmtime())
+
+            # roll over date timestamp at noon UTC next day
+            if night_folder:
+                # If current time is before noon UTC, use previous day
+                now = time.gmtime()
+                if now.tm_hour < 12:
+                    previous_day = time.gmtime(time.mktime(now) - 86400)  # subtract one day
+                    date_folder = time.strftime('%Y-%m-%d', previous_day)
+                else:
+                    date_folder = time.strftime('%Y-%m-%d', now)
+            else:
+                date_folder = time.strftime('%Y-%m-%d', time.gmtime())
 
             output_dir = Path(base_path) / date_folder
 
             if folder:
-                # Optional: avoids accidental nested/absolute paths if folder is user-supplied
-                folder = Path(folder).name
                 output_dir = output_dir / folder
 
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -266,18 +276,18 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             )
 
     @ActionRegistry.register("expose_and_save_camera", observatory_arg=False, action_type="device")
-    def expose_and_save(self, exposure: float, base_path: str = None, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None, folder: str = None, preview: bool = True):
+    def expose_and_save(self, exposure: float, base_path: str = None, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None, folder: str = None, preview: bool = True, night_folder: bool = True):
         if base_path is None:
             base_path = self.observatory.base_path
         nda, hdr = self.expose(exposure, binX, binY)
-        filename = self.create_fits(nda, hdr, additional_headers or {}, base_path, file_suffix, folder, preview=preview)
+        filename = self.create_fits(nda, hdr, additional_headers or {}, base_path, file_suffix, folder, preview=preview, night_folder=night_folder)
         self.observatory.state.set_message(
             f"camera_capture:{self.id}",
             f"Image captured and saved to {filename}",
         )
         return filename
 
-    async def trigger_expose_and_save(self, exposure: float, base_path: str, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None, folder: str = None, preview: bool = True):
+    async def trigger_expose_and_save(self, exposure: float, base_path: str, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None, folder: str = None, preview: bool = True, night_folder: bool = True):
         self.dispatch_trigger(
             self.expose_and_save,
             exposure,
@@ -287,5 +297,6 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             additional_headers,
             file_suffix,
             folder,
-            preview
+            preview,
+            night_folder=night_folder
         )

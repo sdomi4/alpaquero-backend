@@ -25,17 +25,27 @@ def create_mdark(
         sigma_clip: bool = False,
         sigma_clip_low_thresh: float = 5,
         sigma_clip_high_thresh: float = 5,
-        observatory: 'Observatory' = None
+        observatory: 'Observatory' = None,
+        night_folder: bool = True
     ):
     print("calibrated path:", calibrated_path)
     if type(calibrated_path) == str:
         calibrated_path = Path(os.path.dirname(calibrated_path))
-        print("fixed path?", calibrated_path)
 
     if base_path is None:
         base_path = observatory.base_path
 
-    date_folder = time.strftime('%Y-%m-%d', time.gmtime())
+    # roll over date timestamp at noon UTC next day
+    if night_folder:
+        # If current time is before noon UTC, use previous day
+        now = time.gmtime()
+        if now.tm_hour < 12:
+            previous_day = time.gmtime(time.mktime(now) - 86400)  # subtract one day
+            date_folder = time.strftime('%Y-%m-%d', previous_day)
+        else:
+            date_folder = time.strftime('%Y-%m-%d', now)
+    else:
+        date_folder = time.strftime('%Y-%m-%d', time.gmtime())
 
     output_path = Path(base_path) / date_folder / output_folder
     output_path.mkdir(parents=True, exist_ok=True)
@@ -74,7 +84,8 @@ def calibrate_flats(
         sigma_clip_low_thresh: float = 5,
         sigma_clip_high_thresh: float = 5,
         save_subtracted_flats: bool = False,
-        observatory: 'Observatory' = None
+        observatory: 'Observatory' = None,
+        night_folder: bool = True
     ):
     print(raw_flats_path)
     if type(raw_flats_path) == str:
@@ -82,7 +93,17 @@ def calibrate_flats(
     if base_path is None:
         base_path = observatory.base_path
     
-    date_folder = time.strftime('%Y-%m-%d', time.gmtime())
+        # roll over date timestamp at noon UTC next day
+    if night_folder:
+        # If current time is before noon UTC, use previous day
+        now = time.gmtime()
+        if now.tm_hour < 12:
+            previous_day = time.gmtime(time.mktime(now) - 86400)  # subtract one day
+            date_folder = time.strftime('%Y-%m-%d', previous_day)
+        else:
+            date_folder = time.strftime('%Y-%m-%d', now)
+    else:
+        date_folder = time.strftime('%Y-%m-%d', time.gmtime())
     output_path = Path(base_path) / date_folder / output_folder
     output_path.mkdir(parents=True, exist_ok=True)
     

@@ -1,19 +1,61 @@
-name: "test"
+---
+name: "photometry_calibration"
+description: "Night Photometric Calibration Sequence"
+
 sequence:
-  - name: "Start Sequencing Engine Test"
-    action: debug_print
-    args: { message: "Beginning test sequence..." }
+  - name: "Set Observatory Status"
+    action: set_status
+    args: { status: "calibrating" }
 
-  - name: "Start Timestamp"
-    action: debug_timestamp
+  - name: "ev lac calib"
+    sequence:
+      
+      - name: "Expose dark"
+        action: "expose_and_save_camera"
+        device: "sim_camera"
+        args: { exposure: 30, folder: "Variables\\Photometrie\\Calibration", file_suffix: "DD" }
+        register: "dark_dark_file"
 
-  - name: "Repetition test:"
-    action: debug_print
-    args: { message: "repeating..." }
-    repeat: 3
-    delay: 1
+      - name: "Expose flat dark"
+        action: "expose_and_save_camera"
+        device: "sim_camera"
+        args: { exposure: 0.5, folder: "Variables\\Photometrie\\Calibration", file_suffix: "FD" }
+        register: "flat_dark_file"
 
-  - name: "Post Repetition Timestamp"
-    action: debug_timestamp
+      - name: "Expose flat B"
+        action: "expose_and_save_camera"
+        device: "sim_camera"
+        args: { exposure: 0.5, folder: "Variables\\Photometrie\\Calibration", file_suffix: "FB" }
+        register: "flats"
 
-    
+      - name: "Create masters"
+        parallel:
+        - name: "Create mdark"
+          action: "create_master_dark"
+          args: {
+            calibrated_path: "{{dark_dark_file.result}}",
+            output_folder: "Variables\\Photometrie\\Calibration\\masters",
+            dark_glob: "*DD.fits",
+            output_filename: "mdark.fits",
+            method: "median"
+          }
+        - name: "Create mflatdark"
+          action: "create_master_dark"
+          args: {
+            calibrated_path: "{{flat_dark_file.result}}",
+            output_folder: "Variables\\Photometrie\\Calibration\\masters",
+            dark_glob: "*FD.fits",
+            output_filename: "mflatdark.fits",
+            method: "median"
+          }
+          register: "mflatdark_file"
+      - name: "calibrate flats"
+        action: "calibrate_flats"
+        args: {
+          raw_flats_path: "{{flats.result}}",
+          output_folder: "Variables\\Photometrie\\Calibration\\masters",
+          raw_flat_glob: "*FB.fits",
+          master_dark_path: "{{mflatdark_file.result}}",
+          output_filename: "masterflatJohnsonB.fits",
+          method: "average"
+        }
