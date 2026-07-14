@@ -73,6 +73,15 @@ devices:
     port: 32323
     device_number: 0
 
+  - id: "sim_focuser"
+    type: "focuser"
+    name: "Alpaca Simulator Focuser"
+    auto_connect: false
+    poll_time: 2
+    host: "127.0.0.1"
+    port: 32323
+    device_number: 0
+
 webcams:
   - "dome_cam"
   - "uecht_cam"
@@ -94,7 +103,9 @@ observatory:
       aperture_diameter: 1
 
       devices:
+      - dome: "sim_dome"
       - telescope: "sim_telescope"
       - camera: "sim_camera"
       - cover: "sim_cover"
       - filterwheel: "sim_filterwheel"
+      - focuser: "sim_focuser"

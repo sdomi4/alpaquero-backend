@@ -22,29 +22,29 @@ class AlpaqueroFocuser(ObservatoryDevice[focuser.Focuser]):
         try:
             self.alpaca.Halt()
         except Exception as e:
-            raise FocuserError(f"Error halting focuser {self.alpaca.name}: {e}")
+            raise FocuserError(f"Error halting focuser {self.name}: {e}")
         
     def move(self, position: int):
         try:
             if position < 0 or position > self.alpaca.MaxStep:
-                raise FocuserError(f"Position {position} is out of bounds (0, {self.alpaca.MaxStep}) for focuser {self.alpaca.name}")
+                raise FocuserError(f"Position {position} is out of bounds (0, {self.alpaca.MaxStep}) for focuser {self.name}")
             if self.alpaca.Position is None:
-                raise FocuserError(f"Focuser {self.alpaca.name} can't read position")
+                raise FocuserError(f"Focuser {self.name} can't read position")
             if abs(self.alpaca.Position - position) > self.alpaca.MaxIncrement:
-                raise FocuserError(f"Move from {self.alpaca.Position} to {position} exceeds MaxIncrement {self.alpaca.MaxIncrement} for focuser {self.alpaca.name}")
+                raise FocuserError(f"Move from {self.alpaca.Position} to {position} exceeds MaxIncrement {self.alpaca.MaxIncrement} for focuser {self.name}")
             self.alpaca.Move(position)
         except Exception as e:
-            raise FocuserError(f"Error moving focuser {self.alpaca.name} to position {position}: {e}")
+            raise FocuserError(f"Error moving focuser {self.name} to position {position}: {e}")
         
-    def move_to(self, increment: int):
+    def move_by(self, increment: int):
         try:
             if abs(increment) > self.alpaca.MaxIncrement:
-                raise FocuserError(f"Increment {increment} is greater than MaxIncrement {self.alpaca.MaxIncrement} for focuser {self.alpaca.name}")
+                raise FocuserError(f"Increment {increment} is greater than MaxIncrement {self.alpaca.MaxIncrement} for focuser {self.name}")
             position = self.alpaca.Position
             if position is None:
-                raise FocuserError(f"Focuser {self.alpaca.name} can't read position")
+                raise FocuserError(f"Focuser {self.name} can't read position")
             if position + increment < 0 or position + increment > self.alpaca.MaxStep:
-                raise FocuserError(f"Increment {increment} would move focuser {self.alpaca.name} out of bounds (0, {self.alpaca.MaxStep})")
+                raise FocuserError(f"Increment {increment} would move focuser {self.name} out of bounds (0, {self.alpaca.MaxStep})")
             self.alpaca.Move(position + increment)
         except Exception as e:
-            raise FocuserError(f"Error moving focuser {self.alpaca.name} to increment {increment}: {e}")
+            raise FocuserError(f"Error moving focuser {self.name} to increment {increment}: {e}")

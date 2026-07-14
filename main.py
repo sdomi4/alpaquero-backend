@@ -20,6 +20,7 @@ from routes.observatory import router as observatory_router
 from routes.status import router as status_router
 from routes.preview import router as preview_router
 from routes.astro import router as astro_router
+from routes.focuser import router as focuser_router
 
 
 @asynccontextmanager
@@ -63,3 +64,4 @@ app.include_router(observatory_router)
 app.include_router(status_router)
 app.include_router(preview_router)
 app.include_router(astro_router)
+app.include_router(focuser_router)
