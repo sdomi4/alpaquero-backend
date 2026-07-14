@@ -36,6 +36,10 @@ from observatory.devices.telescope import AlpaqueroTelescope
 from alpaquero.factories.telescope import telescope_factory
 from alpaquero.updaters.telescope import telescope_updater
 
+from observatory.devices.focuser import AlpaqueroFocuser
+from alpaquero.factories.focuser import focuser_factory
+from alpaquero.updaters.focuser import focuser_updater
+
 from observatory.instrument import Instrument, InstrumentRegistry
 
 from observatory.state import StateManager
@@ -255,8 +259,30 @@ class Observatory:
                     poll_time=poll_time,
                 )
                 self.switches[device_id] = device_alpaquero
+            elif device_type == "focuser":
+
+
+                device_alpaquero = AlpaqueroFocuser(
+                    observatory=self,
+                    factory=lambda h=host, p=port, did=device_id, dn=device_number: focuser_factory(
+                        address=f"{h}:{p}",
+                        id=did,
+                        device_number=dn,
+                        state=self.state
+                    ),
+                    updater=lambda did=device_id: focuser_updater(
+                        focuser=self.focusers[did],
+                        id=did,
+                        state=self.state
+                    ),
+                    id=device_id,
+                    name=name,
+                    poll_time=poll_time,
+                )
+                self.focusers[device_id] = device_alpaquero
             else:
                 raise ValueError(f"Unknown device type: {device_type}")
+                
 
             
             if auto_connect:

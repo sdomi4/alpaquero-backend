@@ -113,8 +113,18 @@ class FilterwheelState(BaseDeviceState):
     names: Optional[list[str]] = None # list of filter names
     position: Optional[int] = None  # current filter position, -1 = moving
 
+class FocuserState(BaseDeviceState):
+    device_type: Literal["focuser"] = "focuser"
+    position: Optional[int] = None  # current focuser position
+    is_moving: Optional[bool] = None  # is the focuser currently moving
+    temperature: Optional[float] = None  # current focuser temperature
+    step_size: Optional[int] = None  # step size for focuser movement
+    max_increment: Optional[int] = None  # maximum increment for focuser movement
+    max_step: Optional[int] = None  # maximum step for focuser movement
+
+
 DeviceState = Annotated[
-    Union[DomeState, TelescopeState, ObservingConditionsState, SafetyMonitorState, CoverState, SwitchState, CameraState, FilterwheelState],
+    Union[DomeState, TelescopeState, ObservingConditionsState, SafetyMonitorState, CoverState, SwitchState, CameraState, FilterwheelState, FocuserState],
     Field(discriminator="device_type"),
 ]
 

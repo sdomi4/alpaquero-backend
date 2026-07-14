@@ -29,3 +29,6 @@ class CameraError(ObservatoryError):
 
 class FilterWheelError(ObservatoryError):
     component: str = "filterwheel"
+
+class FocuserError(ObservatoryError):
+    component: str = "focuser"
