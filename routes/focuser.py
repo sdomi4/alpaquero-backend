@@ -34,7 +34,7 @@ async def focuser_move(
     observatory: Observatory = Depends(get_observatory)
 ):
     try:
-        observatory.focusers[focuser_id].move(position)
+        await observatory.focusers[focuser_id].trigger_move(position)
     except Exception as e:
         message = handle_error(e, f"Error moving focuser {focuser_id} to position {position}", level="error")
         raise HTTPException(status_code=500, detail=message)
@@ -57,7 +57,7 @@ async def focuser_move_increment(
     observatory: Observatory = Depends(get_observatory)
 ):
     try:
-        observatory.focusers[focuser_id].move_by(increment)
+        await observatory.focusers[focuser_id].trigger_move_by(increment)
     except Exception as e:
         message = handle_error(e, f"Error moving focuser {focuser_id} by increment {increment}", level="error")
         raise HTTPException(status_code=500, detail=message)

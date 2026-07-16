@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Callable
 import numpy as np
 import astropy.io.fits as fits
 from pathlib import Path
+from observatory.error_handler import handle_error
 
 
 if TYPE_CHECKING:
@@ -181,9 +182,12 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
                 filterwheel_id = devices.get("filterwheel")
                 if filterwheel_id:
                     filterwheel = self.observatory.filterwheels[filterwheel_id]
-                    filter_position = filterwheel.alpaca.Position
-                    hdr['FILTNAME'] = filterwheel.name
-                    hdr['FILTER'] = filterwheel.alpaca.Names[filter_position]
+                    try:
+                        filter_position = filterwheel.alpaca.Position
+                        hdr['FILTNAME'] = filterwheel.name
+                        hdr['FILTER'] = filterwheel.alpaca.Names[filter_position]
+                    except Exception as e:
+                        handle_error(e, f"{instrument.name} filterwheel {filterwheel.name} error, omitting FITS header values", level="warning")
 
                 # ['IMAGETYP'] = str: Lightframe / Dark / Flat -> google for standard
                 hdr['FOCALLEN'] = instrument.focal_length if instrument else "Unknown"
@@ -194,14 +198,17 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             # ['EGAIN'] = from camera driver electric
             
                 if "telescope" in devices:
-                    telescope_device = self.observatory.telescopes[devices["telescope"]]
-                    hdr['OBJCTRA'] = telescope_device.alpaca.RightAscension
-                    hdr['OBJCTDEC'] = telescope_device.alpaca.Declination
-                    hdr['OBJCTALT'] = telescope_device.alpaca.Altitude
-                    hdr['OBJCTAZ'] = telescope_device.alpaca.Azimuth
-                    # ['OBJCTHA'] = str: from telescope?
+                    try:
+                        telescope_device = self.observatory.telescopes[devices["telescope"]]
+                        hdr['OBJCTRA'] = telescope_device.alpaca.RightAscension
+                        hdr['OBJCTDEC'] = telescope_device.alpaca.Declination
+                        hdr['OBJCTALT'] = telescope_device.alpaca.Altitude
+                        hdr['OBJCTAZ'] = telescope_device.alpaca.Azimuth
+                        # ['OBJCTHA'] = str: from telescope?
 
-                    hdr['PIERSIDE'] = telescope_device.alpaca.SideOfPier            
+                        hdr['PIERSIDE'] = telescope_device.alpaca.SideOfPier
+                    except Exception as e:
+                        handle_error(e, f"{instrument.name} telescope {devices['telescope']} error, omitting FITS header values", level="warning")
             
             # ['FOCUSPOS'] = number (if focuser present)
             # ['FOCUSSSZ'] = step size

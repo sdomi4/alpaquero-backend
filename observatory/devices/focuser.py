@@ -48,3 +48,9 @@ class AlpaqueroFocuser(ObservatoryDevice[focuser.Focuser]):
             self.alpaca.Move(position + increment)
         except Exception as e:
             raise FocuserError(f"Error moving focuser {self.name} to increment {increment}: {e}")
+        
+    async def trigger_move(self, position: int):
+        self.dispatch_trigger(self.move, position=position)
+
+    async def trigger_move_by(self, increment: int):
+        self.dispatch_trigger(self.move_by, increment=increment)
