@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Any, Dict, List
 import asyncio
+from contextlib import suppress
 from pathlib import Path
 
 from observatory.action_registry import ActionRegistry
@@ -60,6 +61,7 @@ class Observatory:
 
         # Init state
         self.state = StateManager()
+        self._observatory_task: asyncio.Task | None = None
 
 
     def startup(self):
@@ -106,7 +108,7 @@ class Observatory:
         self.instrument_registry = InstrumentRegistry(instruments)
 
         # Start observatory loops
-        asyncio.create_task(observatory_loop(self.state, self))
+        self._observatory_task = asyncio.create_task(observatory_loop(self.state, self))
 
     def _load_device(self, config: Dict[str, Any]):
         device_type = config.get("type")
@@ -171,6 +173,50 @@ class Observatory:
     def refresh_sequence_catalog(self):
         self.sequence_registry.clear()
         self.load_sequence_catalog()
+
+    def _iter_devices(self):
+        for spec in DEVICE_SPECS.values():
+            yield from getattr(self, spec.collection).values()
+
+    async def shutdown(self, *, timeout: float = 10) -> None:
+        print("Shutting down observatory services...")
+        self.status = "shutting_down"
+
+        if self._observatory_task and not self._observatory_task.done():
+            self._observatory_task.cancel()
+            with suppress(asyncio.CancelledError, asyncio.TimeoutError):
+                await asyncio.wait_for(self._observatory_task, timeout=timeout)
+        self._observatory_task = None
+
+        await self.sequence_registry.shutdown(timeout=timeout)
+
+        devices = list(self._iter_devices())
+        if devices:
+            shutdown_pairs = [
+                (device, device.shutdown(timeout=timeout))
+                for device in devices
+                if hasattr(device, "shutdown")
+            ]
+            try:
+                results = await asyncio.wait_for(
+                    asyncio.gather(
+                        *(shutdown for _, shutdown in shutdown_pairs),
+                        return_exceptions=True,
+                    ),
+                    timeout=timeout,
+                )
+            except asyncio.TimeoutError:
+                handle_error("Timed out while shutting down devices", level="warning")
+            else:
+                for (device, _), result in zip(shutdown_pairs, results):
+                    if isinstance(result, Exception):
+                        handle_error(
+                            result,
+                            f"Error shutting down device {device.name}",
+                            level="warning",
+                        )
+
+        self.status = "shutdown"
 
     def emergency_shutdown(self):
         print("Performing emergency shutdown procedures")

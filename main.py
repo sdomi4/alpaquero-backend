@@ -31,15 +31,20 @@ async def lifespan(app: FastAPI):
         observatory = Observatory()
         observatory.startup()
         app.state.observatory = observatory
-        
     except Exception as e:
         handle_error(e, "Error during observatory startup", level="error")
         raise e
-    
-    yield
 
-    app.state.observatory = None
-    print("Shutting down observatory...")
+    try:
+        yield
+    finally:
+        print("Shutting down observatory...")
+        try:
+            await observatory.shutdown()
+        except Exception as e:
+            handle_error(e, "Error during observatory shutdown", level="error")
+        finally:
+            app.state.observatory = None
 
 
 app = FastAPI(lifespan=lifespan)

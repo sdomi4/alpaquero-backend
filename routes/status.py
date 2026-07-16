@@ -3,6 +3,7 @@ import asyncio
 from observatory.observatory import Observatory 
 from observatory.error_handler import connect_error_websocket, disconnect_error_websocket, handle_error_async
 from routes import get_observatory_ws
+from routes.websocket_utils import run_until_websocket_disconnect
 
 router = APIRouter()
 
@@ -10,9 +11,12 @@ router = APIRouter()
 async def state_websocket(websocket: WebSocket, observatory: Observatory = Depends(get_observatory_ws)):
     await websocket.accept()
     try:
-        while True:
-            await websocket.send_json(observatory.state.snapshot_dict())
-            await asyncio.sleep(1)
+        async def send_state_updates():
+            while True:
+                await websocket.send_json(observatory.state.snapshot_dict())
+                await asyncio.sleep(1)
+
+        await run_until_websocket_disconnect(websocket, send_state_updates)
     except WebSocketDisconnect:
         pass
     except Exception as e:
@@ -32,4 +36,3 @@ async def error_websocket(websocket: WebSocket):
         await handle_error_async(e, "Error in error websocket", level="warning")
     finally:
         disconnect_error_websocket(websocket)
-

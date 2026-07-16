@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse
 from observatory.observatory import Observatory 
 from observatory.error_handler import connect_error_websocket, disconnect_error_websocket, handle_error_async
 from routes import get_observatory_ws, get_observatory
+from routes.websocket_utils import run_until_websocket_disconnect
 
 router = APIRouter()
 
@@ -11,13 +12,16 @@ router = APIRouter()
 async def preview_websocket(websocket: WebSocket, observatory: Observatory = Depends(get_observatory_ws)):
     await websocket.accept()
     try:
-        last_previews = None
-        while True:
-            previews = observatory.get_capture_previews(3)
-            if previews != last_previews:
-                await websocket.send_json(previews)
-                last_previews = previews
-            await asyncio.sleep(1)
+        async def send_preview_updates():
+            last_previews = None
+            while True:
+                previews = observatory.get_capture_previews(3)
+                if previews != last_previews:
+                    await websocket.send_json(previews)
+                    last_previews = previews
+                await asyncio.sleep(1)
+
+        await run_until_websocket_disconnect(websocket, send_preview_updates)
     except WebSocketDisconnect:
         pass
     except Exception as e:
