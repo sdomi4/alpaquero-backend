@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 import inspect, traceback
 from observatory.error_handler import handle_error_async
 from typing import TYPE_CHECKING
+from datetime import datetime, timedelta
 if TYPE_CHECKING:
     from observatory.observatory import Observatory
 
@@ -24,6 +25,7 @@ class ExecutionContext:
         self.id = generate_context_id()
         self.results = {}
         self.observatory = observatory
+        self.start_time = None
 
     def request_pause(self):
         self._gate.clear()
@@ -73,7 +75,8 @@ class Lifecycle:
             "on_error": [],
             "when": [],
             "repeat": 1,
-            "update": False
+            "update": False,
+            "until": None
         }
 
     def __str__(self):
@@ -140,41 +143,57 @@ class Sequence:
         self.steps.extend(items)
 
     async def run(self):
+        if self.context.start_time is None:
+            self.context.start_time = datetime.now()
         # Run sequence with pre-execution hooks, sequential execution of steps, and post-execution hooks
         try:
-            for i in range(self.lifecycle.hooks.get("repeat", 1)):
-                await self.context.checkpoint()
-                print("Repeating Sequence:", i)
-                print("Delaying Sequence for", self.lifecycle.hooks.get("delay", 0))
-                await sleep_with_checkpoints(self.lifecycle.hooks.get("delay", 0), self.context)
-                await self.context.checkpoint()
-                condition = True
-                if self.lifecycle.hooks["when"]:
-                    condition = all(await asyncio.gather(*(hook() for hook in self.lifecycle.hooks["when"])))
-                    print("When condition:", condition)
-                if not condition:
-                    continue
-                await self.context.checkpoint()
-                print("Running Sequence before hooks")
-                await self.lifecycle.run("before")
-                await self.context.checkpoint()
-                for step in self.steps:
+            if self.lifecycle.hooks.get("until"):       
+                until_time = self.lifecycle.hooks.get("until")
+                parts = list(map(int, until_time.split(":")))
+                hour = parts[0]
+                minute = parts[1]
+                second = parts[2] if len(parts) == 3 else 0
+                end_time = self.context.start_time.replace(hour=hour, minute=minute, second=second, microsecond=0)
+                if end_time <= self.context.start_time:
+                    end_time += timedelta(days=1)
+
+            while True:
+                if self.lifecycle.hooks.get("until") and datetime.now() >= end_time:
+                    break
+                for i in range(self.lifecycle.hooks.get("repeat", 1)):
                     await self.context.checkpoint()
-                    assert isinstance(step, (Sequence, ParallelGroup, Task)), "Step must be a Sequence, ParallelGroup, or Task"
-                    print("Running step:", step.name)
-                    if self.lifecycle.hooks.get("update", True):
-                        info_text = f"Step: {step.name}"
-                        if self.lifecycle.hooks.get("repeat", 1) > 1:
-                            info_text += f" (repeat {i + 1})"
-                        self.context.observatory.state.set_sequence_info(
-                            self.context.id,
-                            info_text
-                        )
-                    await step.run()
-                await self.context.checkpoint()
-                print("Running Sequence after hooks")
-                await self.lifecycle.run("after")
-                await self.context.checkpoint()
+                    print("Repeating Sequence:", i)
+                    print("Delaying Sequence for", self.lifecycle.hooks.get("delay", 0))
+                    await sleep_with_checkpoints(self.lifecycle.hooks.get("delay", 0), self.context)
+                    await self.context.checkpoint()
+                    condition = True
+                    if self.lifecycle.hooks["when"]:
+                        condition = all(await asyncio.gather(*(hook() for hook in self.lifecycle.hooks["when"])))
+                        print("When condition:", condition)
+                    if not condition:
+                        continue
+                    await self.context.checkpoint()
+                    print("Running Sequence before hooks")
+                    await self.lifecycle.run("before")
+                    await self.context.checkpoint()
+                    for step in self.steps:
+                        await self.context.checkpoint()
+                        assert isinstance(step, (Sequence, ParallelGroup, Task)), "Step must be a Sequence, ParallelGroup, or Task"
+                        print("Running step:", step.name)
+                        if self.lifecycle.hooks.get("update", True):
+                            info_text = f"Step: {step.name}"
+                            if self.lifecycle.hooks.get("repeat", 1) > 1:
+                                info_text += f" (repeat {i + 1})"
+                            self.context.observatory.state.set_sequence_info(
+                                self.context.id,
+                                info_text
+                            )
+                        await step.run()
+                    await self.context.checkpoint()
+                    print("Running Sequence after hooks")
+                    await self.lifecycle.run("after")
+                    await self.context.checkpoint()
+                
         except Exception as e:
             await handle_error_async(e, f"Error occurred in sequence {self.name}", level="error")
             await self.lifecycle.run("on_error")
@@ -214,42 +233,58 @@ class ParallelGroup:
         self.tasks.extend(tasks)
 
     async def run(self):
+        if self.context.start_time is None:
+            self.context.start_time = datetime.now()
         # Run parallel group with pre-execution hooks, concurrent execution of tasks, and post-execution hooks
         print("Running ParallelGroup:", self.name)
         try:
-            for i in range(self.lifecycle.hooks.get("repeat", 1)):
-                await self.context.checkpoint()
-                print("Repeating ParallelGroup:", i)
-                print("Delaying ParallelGroup for", self.lifecycle.hooks.get("delay", 0))
-                await sleep_with_checkpoints(self.lifecycle.hooks.get("delay", 0), self.context)
-                condition = True
-                if self.lifecycle.hooks["when"]:
-                    condition = all(await asyncio.gather(*(hook() for hook in self.lifecycle.hooks["when"])))
-                    print("When condition:", condition)
-                if not condition:
-                    continue
-                await self.context.checkpoint()
-                print("Running ParallelGroup before hooks")
-                await self.lifecycle.run("before")
-                try:
-                    print(f"Task List: {self.tasks}")
-                    if self.lifecycle.hooks.get("update", True):
-                        info_text = f"ParallelGroup: {self.name}"
-                        if self.lifecycle.hooks.get("repeat", 1) > 1:
-                            info_text += f" (repeat {i + 1})"
-                        self.context.observatory.state.set_sequence_info(
-                            self.context.id,
-                            info_text
-                        )
-                    async with TaskGroup() as tg:
-                        for task in self.tasks:
-                            tg.create_task(task.run())
-                except* GracefulCancellation:
-                    print("ParallelGroup aborted due to GracefulCancellation")
-                await self.context.checkpoint()
-                print("Running ParallelGroup after hooks")
-                await self.lifecycle.run("after")
-                await self.context.checkpoint()
+            if self.lifecycle.hooks.get("until"):       
+                until_time = self.lifecycle.hooks.get("until")
+                parts = list(map(int, until_time.split(":")))
+
+                hour = parts[0]
+                minute = parts[1]
+                second = parts[2] if len(parts) == 3 else 0
+                end_time = self.context.start_time.replace(hour=hour, minute=minute, second=second, microsecond=0)
+                if end_time <= self.context.start_time:
+                    end_time += timedelta(days=1)
+
+            while True:
+                if self.lifecycle.hooks.get("until") and datetime.now() >= end_time:
+                    break
+                for i in range(self.lifecycle.hooks.get("repeat", 1)):
+                    await self.context.checkpoint()
+                    print("Repeating ParallelGroup:", i)
+                    print("Delaying ParallelGroup for", self.lifecycle.hooks.get("delay", 0))
+                    await sleep_with_checkpoints(self.lifecycle.hooks.get("delay", 0), self.context)
+                    condition = True
+                    if self.lifecycle.hooks["when"]:
+                        condition = all(await asyncio.gather(*(hook() for hook in self.lifecycle.hooks["when"])))
+                        print("When condition:", condition)
+                    if not condition:
+                        continue
+                    await self.context.checkpoint()
+                    print("Running ParallelGroup before hooks")
+                    await self.lifecycle.run("before")
+                    try:
+                        print(f"Task List: {self.tasks}")
+                        if self.lifecycle.hooks.get("update", True):
+                            info_text = f"ParallelGroup: {self.name}"
+                            if self.lifecycle.hooks.get("repeat", 1) > 1:
+                                info_text += f" (repeat {i + 1})"
+                            self.context.observatory.state.set_sequence_info(
+                                self.context.id,
+                                info_text
+                            )
+                        async with TaskGroup() as tg:
+                            for task in self.tasks:
+                                tg.create_task(task.run())
+                    except* GracefulCancellation:
+                        print("ParallelGroup aborted due to GracefulCancellation")
+                    await self.context.checkpoint()
+                    print("Running ParallelGroup after hooks")
+                    await self.lifecycle.run("after")
+                    await self.context.checkpoint()
         except Exception as e:
             await handle_error_async(e, f"Error occurred in parallel group {self.name}", level="error")
             traceback.print_exc()
@@ -344,42 +379,58 @@ class Task:
             raise RuntimeError(f"Unknown task kind: {kind}")
 
     async def run(self):
+        if self.context.start_time is None:
+            self.context.start_time = datetime.now()
         print("Running Task:", self.name)
         try:
-            for i in range(self.lifecycle.hooks.get("repeat", 1)):
-                await self.context.checkpoint()
-                print("Repeating Task:", i)
-                print("Delaying Task for", self.lifecycle.hooks.get("delay", 0))
-                await sleep_with_checkpoints(self.lifecycle.hooks.get("delay", 0), self.context)
-                await self.context.checkpoint()
-                condition = True
-                if self.lifecycle.hooks["when"]:
-                    condition = all(await asyncio.gather(*(hook() for hook in self.lifecycle.hooks["when"])))
-                    print("When condition:", condition)
-                if not condition:
-                    continue
-                await self.context.checkpoint()
-                print("Running Task before hooks")
-                await self.lifecycle.run("before")
-                await self.context.checkpoint()
-                print("Executing action for Task:", self.name)
-                if self.lifecycle.hooks.get("update", True):
-                    info_text = f"Task: {self.name}"
-                    if self.lifecycle.hooks.get("repeat", 1) > 1:
-                        info_text += f" (repeat {i + 1})"
-                    self.context.observatory.state.set_sequence_info(
-                        self.context.id,
-                        info_text
-                    )
-                result = await self._exec()
-                if asyncio.iscoroutine(result):
-                    result = await result
-                if self.register:
-                    self.context.register_result(self.register, result)
-                await self.context.checkpoint()
-                print("Running Task after hooks:", self.name)
-                await self.lifecycle.run("after")
-                await self.context.checkpoint()
+            if self.lifecycle.hooks.get("until"):       
+                until_time = self.lifecycle.hooks.get("until")
+                parts = list(map(int, until_time.split(":")))
+
+                hour = parts[0]
+                minute = parts[1]
+                second = parts[2] if len(parts) == 3 else 0
+                end_time = self.context.start_time.replace(hour=hour, minute=minute, second=second, microsecond=0)
+                if end_time <= self.context.start_time:
+                    end_time += timedelta(days=1)
+
+            while True:
+                if self.lifecycle.hooks.get("until") and datetime.now() >= end_time:
+                    break
+                for i in range(self.lifecycle.hooks.get("repeat", 1)):
+                    await self.context.checkpoint()
+                    print("Repeating Task:", i)
+                    print("Delaying Task for", self.lifecycle.hooks.get("delay", 0))
+                    await sleep_with_checkpoints(self.lifecycle.hooks.get("delay", 0), self.context)
+                    await self.context.checkpoint()
+                    condition = True
+                    if self.lifecycle.hooks["when"]:
+                        condition = all(await asyncio.gather(*(hook() for hook in self.lifecycle.hooks["when"])))
+                        print("When condition:", condition)
+                    if not condition:
+                        continue
+                    await self.context.checkpoint()
+                    print("Running Task before hooks")
+                    await self.lifecycle.run("before")
+                    await self.context.checkpoint()
+                    print("Executing action for Task:", self.name)
+                    if self.lifecycle.hooks.get("update", True):
+                        info_text = f"Task: {self.name}"
+                        if self.lifecycle.hooks.get("repeat", 1) > 1:
+                            info_text += f" (repeat {i + 1})"
+                        self.context.observatory.state.set_sequence_info(
+                            self.context.id,
+                            info_text
+                        )
+                    result = await self._exec()
+                    if asyncio.iscoroutine(result):
+                        result = await result
+                    if self.register:
+                        self.context.register_result(self.register, result)
+                    await self.context.checkpoint()
+                    print("Running Task after hooks:", self.name)
+                    await self.lifecycle.run("after")
+                    await self.context.checkpoint()
         except Exception as e:
             await handle_error_async(e, f"Error occurred in task {self.name}", level="error")
             await self.lifecycle.run("on_error")

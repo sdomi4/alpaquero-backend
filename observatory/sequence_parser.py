@@ -9,6 +9,7 @@ import re
 
 TEMPLATE_PATTERN = re.compile(r"{{\s*([^{}]+?)\s*}}")
 IDENTIFIER_PATTERN = re.compile(r"[A-Za-z_]\w*")
+UNTIL_PATTERN = re.compile(r"\d{1,2}:\d{2}(:\d{2})?")
 
 class SequenceParser(SequenceBuilder):
     def __init__(self, yaml_string: str, observatory: Observatory, context=None):
@@ -35,6 +36,10 @@ class SequenceParser(SequenceBuilder):
         lifecycle = Lifecycle()
         if "delay" in data:
             lifecycle.hooks["delay"] = data["delay"]
+        if "until" in data:
+            if not UNTIL_PATTERN.match(data["until"]):
+                raise ValueError(f"Invalid 'until' format: {data['until']}. Expected HH:MM[:SS]")
+            lifecycle.hooks["until"] = data["until"]
         #if "before" in data:
         #     lifecycle.hooks["before"].append(partial(self._run_hook, data["before"], context))
         # if "after" in data:
