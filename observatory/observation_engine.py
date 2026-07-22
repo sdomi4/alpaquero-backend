@@ -193,6 +193,8 @@ class Sequence:
                     print("Running Sequence after hooks")
                     await self.lifecycle.run("after")
                     await self.context.checkpoint()
+                if not self.lifecycle.hooks.get("until"):
+                    break
                 
         except Exception as e:
             await handle_error_async(e, f"Error occurred in sequence {self.name}", level="error")
@@ -285,6 +287,8 @@ class ParallelGroup:
                     print("Running ParallelGroup after hooks")
                     await self.lifecycle.run("after")
                     await self.context.checkpoint()
+                if not self.lifecycle.hooks.get("until"):
+                    break   
         except Exception as e:
             await handle_error_async(e, f"Error occurred in parallel group {self.name}", level="error")
             traceback.print_exc()
@@ -431,6 +435,8 @@ class Task:
                     print("Running Task after hooks:", self.name)
                     await self.lifecycle.run("after")
                     await self.context.checkpoint()
+                if not self.lifecycle.hooks.get("until"):
+                    break
         except Exception as e:
             await handle_error_async(e, f"Error occurred in task {self.name}", level="error")
             await self.lifecycle.run("on_error")

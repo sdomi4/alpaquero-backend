@@ -1,0 +1,30 @@
+name: "feature test"
+sequence:
+  - name: "Feature Test Start"
+    action: debug_print
+    args: { message: "Feature Test Start" }
+
+  - name: "Repetition"
+    sequence:
+      - action: debug_print
+        args: { message: "Repetition" }
+        update: True
+      - action: debug_sleep
+        args: { seconds: 2 }
+    repeat: 4
+
+  - name: "Until"
+    sequence:
+      - action: debug_print
+        args: { message: "Until" }
+        update: True
+      - action: debug_sleep
+        args: { seconds: 2 }
+    repeat: 3
+    until: "00:10"
+
+  
+
+  - name: "Feature Test Complete"
+    action: debug_print
+    args: { message: "Feature Test Complete" }

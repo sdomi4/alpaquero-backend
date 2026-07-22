@@ -84,6 +84,7 @@ async def upload_sequence(
         parsed_builder = SequenceParser(yaml_string, observatory)
         if not dry_run:
             observatory.sequence_registry.add_sequence(parsed_builder)
+            print(parsed_builder.build())
             return {"status": "parsed"}
         else:
             parsed_sequence = parsed_builder.build()
