@@ -3,15 +3,24 @@ from PIL import Image
 from io import BytesIO
 import base64
 
-# single preview image stored as downscaled and fullsize jpg
+# Single preview image stored as downscaled and full-size lossless PNGs.
 class CapturePreview():
     def __init__(self, name, img, timestamp):
         self.name = name
         self.timestamp = timestamp
-        self.jpg = self._create_jpg(img)
-        self.preview_jpg = self._create_jpg(img, max_width=640, jpeg_quality=70)
+        self.full_image = self._create_image(img, image_format="PNG")
+        self.preview_image = self._create_image(
+            img,
+            max_width=640,
+            image_format="PNG",
+        )
 
-    def _create_jpg(self, img, max_width=None, jpeg_quality=100):
+    def _create_image(
+        self,
+        img,
+        max_width=None,
+        image_format="PNG",
+    ):
         # Work on a float copy; do not mutate original image
         img = np.asarray(img, dtype=np.float32)
 
@@ -37,7 +46,10 @@ class CapturePreview():
             img_pil = img_pil.resize(new_size, resample=Image.BILINEAR)
 
         buffer = BytesIO()
-        img_pil.save(buffer, format="JPEG", quality=jpeg_quality, optimize=True)
+        save_options = {"optimize": True}
+        if image_format == "PNG":
+            save_options["compress_level"] = 9
+        img_pil.save(buffer, format=image_format, **save_options)
         buffer.seek(0)
 
         return buffer
@@ -63,13 +75,13 @@ class CaptureBuffer():
         previews = []
 
         for item in self.get_last_n(n):
-            jpg_bytes = item.preview_jpg.getvalue()  # BytesIO -> bytes
+            png_bytes = item.preview_image.getvalue()  # BytesIO -> bytes
 
             previews.append({
                 "name": item.name,
                 "timestamp": item.timestamp.isoformat() if hasattr(item.timestamp, "isoformat") else item.timestamp,
-                "preview_jpg": base64.b64encode(jpg_bytes).decode("ascii"),
-                "mime_type": "image/jpeg",
+                "preview_png": base64.b64encode(png_bytes).decode("ascii"),
+                "mime_type": "image/png",
             })
 
         return previews
@@ -77,5 +89,5 @@ class CaptureBuffer():
     def get_full_image(self, name):
         for item in self.buffer:
             if item.name == name:
-                return item.jpg
+                return item.full_image
         return None

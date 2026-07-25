@@ -34,7 +34,7 @@ async def get_full_preview_image(name: str, observatory: Observatory = Depends(g
         image_buffer = observatory.get_full_preview_image(name)
         if image_buffer is None:
             return {"error": "Image not found"}
-        return StreamingResponse(image_buffer, media_type="image/jpeg")
+        return StreamingResponse(image_buffer, media_type="image/png")
     except Exception as e:
         await handle_error_async(e, f"Error retrieving full preview image: {name}", level="error")
         return {"error": str(e)}
