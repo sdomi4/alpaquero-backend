@@ -1,7 +1,6 @@
 import concurrent
 import asyncio, random, string
 from asyncio import TaskGroup
-from typing import Union
 from abc import ABC, abstractmethod
 import inspect, traceback
 from observatory.error_handler import handle_error_async
@@ -54,6 +53,9 @@ class ExecutionContext:
         if not self._gate.is_set():
             print("Sequence paused, waiting to resume...")
         await self._gate.wait()
+        if self._abort.is_set():
+            print("Sequence aborted")
+            raise GracefulCancellation()
 
 async def sleep_with_checkpoints(duration: float, context: ExecutionContext):
     try:
@@ -63,6 +65,15 @@ async def sleep_with_checkpoints(duration: float, context: ExecutionContext):
             await context.checkpoint()
     except asyncio.CancelledError:
         pass
+
+class Step(ABC):
+    def __init__(self, name: str, context: ExecutionContext):
+        self.name = name
+        self.context = context
+
+    @abstractmethod
+    async def run(self):
+        raise NotImplementedError
 
 # Utility class for lifecycle hooks in Sequences/ParallelGroups/Tasks
 class Lifecycle:
@@ -112,13 +123,49 @@ class Lifecycle:
                     action()
 
 
-class Sequence:
+class PauseStep(Step):
+    def __init__(self, name: str, context: ExecutionContext, reason: str | None = None):
+        super().__init__(name, context)
+        self.reason = reason
+
+    def __str__(self):
+        result = f"pause:\n  name: {self.name}"
+        if self.reason:
+            result += f"\n  reason: {self.reason}"
+        return result
+
+    async def run(self):
+        if self.context.start_time is None:
+            self.context.start_time = datetime.now()
+
+        self.context.request_pause()
+
+        if self.context.observatory is not None:
+            self.context.observatory.state.set_sequence_status(
+                self.context.id,
+                "paused",
+            )
+            if self.reason:
+                self.context.observatory.state.set_sequence_info(
+                    self.context.id,
+                    self.reason,
+                )
+
+        await self.context.checkpoint()
+
+        if self.context.observatory is not None:
+            self.context.observatory.state.set_sequence_status(
+                self.context.id,
+                "running",
+            )
+
+
+class Sequence(Step):
     def __init__(self, name: str, context: ExecutionContext, hooks: Lifecycle = None, parameters: dict = None):
-        self.name = name
+        super().__init__(name, context)
         self.description = ""
         self.steps = []
         self.lifecycle = hooks if hooks else Lifecycle()
-        self.context = context
         self.parameters = parameters if parameters else {}
 
     def __str__(self):
@@ -139,7 +186,7 @@ class Sequence:
         
         return result
 
-    def add_step(self, *items: Union['ParallelGroup', 'Sequence', 'Task']):
+    def add_step(self, *items: Step):
         self.steps.extend(items)
 
     async def run(self):
@@ -178,7 +225,7 @@ class Sequence:
                     await self.context.checkpoint()
                     for step in self.steps:
                         await self.context.checkpoint()
-                        assert isinstance(step, (Sequence, ParallelGroup, Task)), "Step must be a Sequence, ParallelGroup, or Task"
+                        assert isinstance(step, Step), "Sequence children must implement Step"
                         print("Running step:", step.name)
                         if self.lifecycle.hooks.get("update", True):
                             info_text = f"Step: {step.name}"
@@ -204,13 +251,12 @@ class Sequence:
             print("Running Sequence finally hooks")
             await self.lifecycle.run("finally")
 
-class ParallelGroup:
-    def __init__(self, name: str, context: ExecutionContext, *tasks: Union['Task', 'ParallelGroup', 'Sequence'], hooks: Lifecycle = None, parameters: dict = None):
-        self.name = name
+class ParallelGroup(Step):
+    def __init__(self, name: str, context: ExecutionContext, *tasks: Step, hooks: Lifecycle = None, parameters: dict = None):
+        super().__init__(name, context)
         self.description = ""
         self.tasks = list(tasks)
         self.lifecycle = hooks if hooks else Lifecycle()
-        self.context = context
         self.parameters = parameters if parameters else {}
 
     def __str__(self):
@@ -231,7 +277,7 @@ class ParallelGroup:
         
         return result
 
-    def add_task(self, *tasks: Union['Task', 'ParallelGroup', 'Sequence']):
+    def add_task(self, *tasks: Step):
         self.tasks.extend(tasks)
 
     async def run(self):
@@ -299,12 +345,11 @@ class ParallelGroup:
             await self.lifecycle.run("finally")
         
 
-class Task:
+class Task(Step):
     def __init__(self, name: str, action: callable, context: ExecutionContext, hooks: Lifecycle = None, parameters: dict = None, kind: str = "auto", timeout: float = None, executor: concurrent.futures.Executor | None = None, register: str | None = None):
-        self.name = name
+        super().__init__(name, context)
         self.action = action
         self.lifecycle = hooks if hooks else Lifecycle()
-        self.context = context
         self.parameters = parameters if parameters else {}
         self.kind = kind  # "auto", "sync", "async", "cpu"
         self.timeout = timeout  # in seconds

@@ -1,5 +1,5 @@
 import yaml
-from observatory.observation_engine import Sequence, ParallelGroup, Task, SequenceBuilder, Lifecycle
+from observatory.observation_engine import Sequence, ParallelGroup, Task, PauseStep, SequenceBuilder, Lifecycle
 from observatory.action_registry import ActionRegistry
 from observatory.observatory import Observatory
 import asyncio
@@ -66,6 +66,15 @@ class SequenceParser(SequenceBuilder):
                 child = self._recursive_build(step_data, context)
                 parallel_group.add_task(child)
             return parallel_group
+
+        elif "pause" in data:
+            if data["pause"] is not True:
+                raise ValueError("'pause' must be true")
+            return PauseStep(
+                data.get("name", "Pause"),
+                context,
+                reason=data.get("reason"),
+            )
         
         elif "action" in data:
             # explicitly False out observatory_arg because i'm confused
