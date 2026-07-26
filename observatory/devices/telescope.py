@@ -103,6 +103,24 @@ class AlpaqueroTelescope(ObservatoryDevice[telescope.Telescope]):
             self.observatory.state.remove_action(f"Slewing {self.alpaquero.name} to target")
             raise TelescopeError(code="telescope_slew_failed", message=f"Error slewing telescope {self.alpaquero.name}: {e}")
 
+    def tracking_rate(self, tracking_rate: int):
+        try:
+            print("setting tracking rate, current:", self.alpaca.TrackingRate)
+            match tracking_rate:
+                case 0:
+                    self.alpaca.TrackingRate = telescope.DriveRates.driveSidereal
+                case 1:
+                    self.alpaca.TrackingRate = telescope.DriveRates.driveLunar
+                case 2:
+                    print("solar")
+                    self.alpaca.TrackingRate = telescope.DriveRates.driveSolar
+                case _:
+                    raise TelescopeError(code="tracking_rate_invalid", message=f"Invalid tracking rate: {tracking_rate}")
+            print("tracking rate after:", self.alpaca.TrackingRate)
+        except Exception as e:
+            print(e)
+            raise TelescopeError(code="tracking_rate_invalid", message=f"Error setting tracking rate to {tracking_rate}")
+    
     async def trigger_park(self, override: bool = False):
         self.dispatch_trigger(self.park, override=override)
     
