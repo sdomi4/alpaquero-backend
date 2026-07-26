@@ -22,17 +22,26 @@ class SequenceRegistry:
         return list(self.sequences.keys())
 
     def run_sequence(self, observatory: 'Observatory', builder: SequenceBuilder, **params):
-        context = ExecutionContext(observatory=observatory)
+        context = ExecutionContext(observatory=observatory, args=params)
         # regenerate context if id is taken
         while context.id in self.registry:
-            context = ExecutionContext(observatory=observatory)
+            context = ExecutionContext(observatory=observatory, args=params)
         self.registry[context.id] = (builder.name, context) # state tuple (name, context instance)
         observatory.state.add_sequence(context.id, builder.name)
         # Execute the sequence with the new context
         async def _runner():
             observatory.state.add_action("Sequence: " + builder.name)
             try:
-                sequence = builder.build(context=context, observatory=observatory, **params)
+                build_params = (
+                    {}
+                    if getattr(builder, "context_args_only", False)
+                    else params
+                )
+                sequence = builder.build(
+                    context=context,
+                    observatory=observatory,
+                    **build_params,
+                )
                 await sequence.run()
             finally:
                 self.registry.pop(context.id, None)

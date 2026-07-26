@@ -1,9 +1,11 @@
 from typing import TYPE_CHECKING, Tuple
+from observatory.condition_registry import ConditionRegistry
 
 if TYPE_CHECKING:
     from observatory.observatory import Observatory
 
 
+@ConditionRegistry.register("weather_is_safe")
 async def weather_is_safe(observatory: "Observatory") -> Tuple[bool, str]:
     if not observatory.safety_monitors:
         return False, "No safety monitor configured"
@@ -24,6 +26,7 @@ async def weather_is_safe(observatory: "Observatory") -> Tuple[bool, str]:
     return False, "No safety monitor data available"
 
 
+@ConditionRegistry.register("dome_is_open")
 async def dome_is_open(observatory: "Observatory", dome_id: str = None) -> Tuple[bool, str]:
     if not observatory.domes:
         return False, "No dome configured"
@@ -46,6 +49,7 @@ async def dome_is_open(observatory: "Observatory", dome_id: str = None) -> Tuple
     except ValueError:
         return False, f"Dome {dome_id} not found in state"
     
+@ConditionRegistry.register("telescope_is_parked")
 async def telescope_is_parked(observatory: "Observatory", telescope_id: str = None) -> Tuple[bool, str]:
     if not observatory.telescopes:
         return False, "No telescope configured"
@@ -68,6 +72,7 @@ async def telescope_is_parked(observatory: "Observatory", telescope_id: str = No
     except ValueError:
         return False, f"Telescope {telescope_id} not found in state"
     
+@ConditionRegistry.register("covers_are_closed")
 async def covers_are_closed(observatory: "Observatory", cover_ids: list = None) -> Tuple[bool, str]:
     if not observatory.covers:
         return False, "No covers configured"
@@ -91,6 +96,7 @@ async def covers_are_closed(observatory: "Observatory", cover_ids: list = None) 
     
     return True, ""
 
+@ConditionRegistry.register("is_dark")
 async def is_dark(observatory: "Observatory", conditions_id: str = None) -> Tuple[bool, str]:
     if not observatory.observing_conditions:
         return False, "No observing conditions monitor configured"

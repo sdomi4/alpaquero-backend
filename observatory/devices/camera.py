@@ -92,7 +92,12 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
         except Exception as e:
             raise CameraError(code="camera_warmup_failed", message=f"Error warming up camera {self.alpaquero.name}: {e}")
 
-    @ActionRegistry.register("expose_camera", observatory_arg=False, action_type="device")
+    @ActionRegistry.register(
+        "expose_camera",
+        observatory_arg=False,
+        action_type="device",
+        primary="exposure",
+    )
     def expose(self, exposure: float, binX: int = 1, binY: int = 1, startX: int = 0, startY: int = 0):
         try:
 
@@ -282,7 +287,12 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
                 message=f"Error creating FITS file for camera {self.alpaquero.name}: {e}"
             )
 
-    @ActionRegistry.register("expose_and_save_camera", observatory_arg=False, action_type="device")
+    @ActionRegistry.register(
+        "expose_and_save_camera",
+        observatory_arg=False,
+        action_type="device",
+        primary="exposure",
+    )
     def expose_and_save(self, exposure: float, base_path: str = None, binX: int = 1, binY: int = 1, additional_headers: dict = None, file_suffix: str = None, folder: str = None, preview: bool = True, night_folder: bool = True):
         if base_path is None:
             base_path = self.observatory.base_path

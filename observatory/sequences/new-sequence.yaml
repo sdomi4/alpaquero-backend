@@ -1,0 +1,20 @@
+name: New Sequence
+sequence:
+  - action: connect_device
+    device: sim_dome
+  - action: open_dome
+    device: sim_dome
+  - action: connect_device
+    device: sim_telescope
+  - action: slew_telescope
+    device: sim_telescope
+    args:
+      tracking_rate: 1
+      ra: 20
+      dec: 17
+  - action: connect_device
+    device: sim_camera
+  - action: expose_and_save_camera
+    device: sim_camera
+    args:
+      exposure: 1

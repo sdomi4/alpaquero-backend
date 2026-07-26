@@ -14,7 +14,7 @@ class StartSequenceRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-router = APIRouter(prefix="/observatory/sequences", tags=["sequences"])
+router = APIRouter(prefix="/sequences", tags=["sequences"])
 
 
 @router.get("")
@@ -36,6 +36,7 @@ async def list_active_sequences(observatory: Observatory = Depends(get_observato
 async def upload_sequence(
     file: UploadFile = File(...),
     dry_run: bool = False,
+    save: bool = False,
     observatory: Observatory = Depends(get_observatory),
 ):
     if not file.filename or not file.filename.endswith((".yaml", ".yml")):
@@ -45,17 +46,20 @@ async def upload_sequence(
         )
 
     content = await file.read()
-    yaml_string = content.decode("utf-8")
     try:
-        parsed_builder = SequenceParser(yaml_string, observatory)
-        if not dry_run:
-            observatory.sequence_registry.add_sequence(parsed_builder)
-            print(parsed_builder.build())
-            return {"status": "parsed"}
-
-        parsed_sequence = parsed_builder.build()
+        yaml_string = content.decode("utf-8")
+        parsed_builder = SequenceParser(
+            yaml_string,
+            observatory,
+            filename=file.filename,
+        )
+        parsed_sequence = parsed_builder.build(save=save)
         print(parsed_sequence)
-        return {"status": "valid", "parsed_steps": len(parsed_sequence.steps)}
+        if dry_run:
+            return {"status": "valid", "parsed_steps": len(parsed_sequence.steps)}
+
+        observatory.sequence_registry.add_sequence(parsed_builder)
+        return {"status": "parsed"}
     except Exception as e:
         message = handle_error(e, "Failed to parse sequence", level="error")
         raise HTTPException(status_code=400, detail=message)
