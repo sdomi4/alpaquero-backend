@@ -81,7 +81,7 @@ class Observatory:
                 device_alpaquero.connect()
 
         observatory_config = config.get("observatory", {})
-        self.name = observatory_config.get("name", self.name)
+        self.name = observatory_config.get("observat", self.name)
         self.latitude = observatory_config.get("sitelat", self.latitude)
         self.longitude = observatory_config.get("sitelon", self.longitude)
         

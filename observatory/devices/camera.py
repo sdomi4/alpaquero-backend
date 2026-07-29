@@ -144,6 +144,9 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             if imgDataType == np.uint16:
                 hdr['BZERO'] = 32768.0
                 hdr['BSCALE'] = 1.0
+            else:
+                hdr['BZERO'] = 0.0
+                hdr['BSCALE'] = 1.0
             hdr['EXPOSURE'] = exposure
             hdr['EXPTIME'] = exposure
             hdr['DATE-OBS'] = timestamp
