@@ -1,4 +1,9 @@
+from observatory.logging_setup import configure_logging, install_asyncio_exception_handler
+
+configure_logging()
+
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -22,24 +27,30 @@ from routes.status import router as status_router
 from routes.preview import router as preview_router
 from routes.astro import router as astro_router
 from routes.focuser import router as focuser_router
+from routes.logs import router as logs_router
+
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starting up observatory...")
-    set_error_loop(asyncio.get_running_loop())
+    logger.info("Starting up observatory")
+    loop = asyncio.get_running_loop()
+    set_error_loop(loop)
+    install_asyncio_exception_handler(loop)
     try:
         observatory = Observatory()
         observatory.startup()
         app.state.observatory = observatory
     except Exception as e:
         handle_error(e, "Error during observatory startup", level="error")
-        raise e
+        raise
 
     try:
         yield
     finally:
-        print("Shutting down observatory...")
+        logger.info("Shutting down observatory")
         try:
             await observatory.shutdown()
         except Exception as e:
@@ -72,3 +83,4 @@ app.include_router(status_router)
 app.include_router(preview_router)
 app.include_router(astro_router)
 app.include_router(focuser_router)
+app.include_router(logs_router)

@@ -1,10 +1,13 @@
 import asyncio
 from contextlib import suppress
+import logging
 from observatory.observation_engine import ExecutionContext, SequenceBuilder
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from observatory.observatory import Observatory
+
+logger = logging.getLogger(__name__)
 
 class SequenceRegistry:
     def __init__(self):
@@ -48,7 +51,7 @@ class SequenceRegistry:
                 self._tasks.pop(context.id, None)
                 observatory.state.remove_sequence(context.id)
                 observatory.state.remove_action("Sequence: " + builder.name)
-                print("cleaned up", self.registry)
+                logger.info("Cleaned up sequence registry: %s", self.registry)
         
         task = asyncio.create_task(_runner())
         self._tasks[context.id] = task
@@ -61,8 +64,8 @@ class SequenceRegistry:
             task.result()
         except asyncio.CancelledError:
             pass
-        except Exception as e:
-            print(f"Sequence task failed: {e}")
+        except Exception:
+            logger.exception("Sequence task failed")
 
     async def shutdown(self, *, timeout: float = 10) -> None:
         for _, context in list(self.registry.values()):

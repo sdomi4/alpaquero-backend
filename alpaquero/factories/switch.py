@@ -1,7 +1,10 @@
+import logging
 from alpaca import switch
 from time import sleep
 
 from observatory.state import StateManager, SwitchControlState, SwitchState, ToggleControl, RangeControl
+
+logger = logging.getLogger(__name__)
 
 class SwitchConnectionError(RuntimeError):
     pass
@@ -80,14 +83,13 @@ def switch_factory(
         state: "StateManager" = None,
     ) -> switch.Switch:
     try:
-        print("connecting to switch", id, address)
+        logger.info("Connecting to switch %s at %s", id, address)
         s = switch.Switch(address, device_number)
         timeout = 0
         s.Connect()
         while s.Connecting:
                 timeout += 1
                 if timeout > 10:
-                    print("Switch connection timed out")
                     raise SwitchConnectionError("Switch connection timed out")
                 sleep(1)
         
@@ -96,5 +98,5 @@ def switch_factory(
         state.add_device(SwitchState(id=id, connected=True, controls=controls))
         return s
     except Exception as e:
-        print(f"Error connecting to switch: {e}")
-        raise SwitchConnectionError(f"Error connecting to switch: {e}")
+        logger.exception("Error connecting to switch %s", id)
+        raise SwitchConnectionError(f"Error connecting to switch: {e}") from e

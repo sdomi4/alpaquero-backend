@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
+import logging
 import threading
 from typing import Any, Literal
 
 
 ErrorLevel = Literal["error", "warning", "info"]
 ERROR_LEVELS: set[str] = {"error", "warning", "info"}
+logger = logging.getLogger(__name__)
 
 
 def validate_error_level(level: str) -> ErrorLevel:
@@ -85,7 +87,7 @@ class ErrorBroadcaster:
     ) -> str:
         level = validate_error_level(level)
         message = format_error_text(error, context)
-        print(f"[{level.upper()}] {message}")
+        self._log(error, message, level)
         await self.broadcast(message, level)
         return message
 
@@ -98,7 +100,7 @@ class ErrorBroadcaster:
     ) -> str:
         level = validate_error_level(level)
         message = format_error_text(error, context)
-        print(f"[{level.upper()}] {message}")
+        self._log(error, message, level)
 
         try:
             loop = asyncio.get_running_loop()
@@ -112,6 +114,17 @@ class ErrorBroadcaster:
 
         loop.create_task(self.broadcast(message, level))
         return message
+
+    @staticmethod
+    def _log(error: BaseException | str, message: str, level: ErrorLevel) -> None:
+        exc_info = None
+        if isinstance(error, BaseException):
+            exc_info = (type(error), error, error.__traceback__)
+        logger.log(
+            {"info": logging.INFO, "warning": logging.WARNING, "error": logging.ERROR}[level],
+            message,
+            exc_info=exc_info,
+        )
 
 
 error_handler = ErrorBroadcaster()

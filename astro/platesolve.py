@@ -1,7 +1,10 @@
+import logging
 from observatory.action_registry import ActionRegistry
 from pathlib import Path
 import pythoncom, gc
 import win32com.client
+
+logger = logging.getLogger(__name__)
 
 @ActionRegistry.register("pinpoint", observatory_arg=False, action_type="analysis")
 def pinpoint(
@@ -71,11 +74,11 @@ def pinpoint_folder(
         glob: str = "*.fits"
 ):
     folder_path = Path(folder_path)
-    print("looking for files in", folder_path, "with glob", glob)
-    print("files in folder", list(folder_path.glob(".fit")))
+    logger.info("Looking for files in %s with glob %s", folder_path, glob)
+    logger.info("Files in folder: %s", list(folder_path.glob(".fit")))
     fits_files = list(folder_path.glob(glob))
 
-    print("pinpointing files:", fits_files)
+    logger.info("Pinpointing files: %s", fits_files)
     results = []
 
     for fits_file in fits_files:
@@ -87,7 +90,7 @@ def pinpoint_folder(
             dec=dec,
             arcsec_per_pixel=arcsec_per_pixel
         )
-        print(result)
+        logger.info("Pinpoint result for %s: %s", fits_file, result)
         results.append({
             "file": str(fits_file),
             "result": result

@@ -1,9 +1,12 @@
 from typing import TYPE_CHECKING
 import asyncio
+import logging
 
 if TYPE_CHECKING:
     from observatory.observatory import Observatory
     from observatory.state import StateManager
+
+logger = logging.getLogger(__name__)
 
 async def observatory_loop(state: "StateManager", observatory: "Observatory"):
     # dumb way to have all safety monitors concur for at least 5 unsafe readings sort of
@@ -20,9 +23,17 @@ async def observatory_loop(state: "StateManager", observatory: "Observatory"):
                 state_device = state.get_device(safety_id)
                 if hasattr(state_device, 'safe'):
                     if state_device.safe is False:
-                        print(f"Safety monitor {safety_id} reports unsafe conditions", safety_counter)
+                        logger.warning(
+                            "Safety monitor %s reports unsafe conditions (count=%s)",
+                            safety_id,
+                            safety_counter,
+                        )
                         safety_counter += 1
-                        print(safety_counter, safety_threshold)
+                        logger.info(
+                            "Safety counter %s/%s",
+                            safety_counter,
+                            safety_threshold,
+                        )
                     else:
                         safety_counter -= 1 if safety_counter > 0 else 0
             except ValueError:
@@ -30,6 +41,6 @@ async def observatory_loop(state: "StateManager", observatory: "Observatory"):
 
         if safety_counter >= safety_threshold and not shutdown_triggered:
             shutdown_triggered = True
-            print("Safety conditions triggered emergency shutdown")
+            logger.critical("Safety conditions triggered emergency shutdown")
             observatory.emergency_shutdown()
         await asyncio.sleep(1)

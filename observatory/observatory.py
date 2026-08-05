@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any, Dict, List
 import asyncio
 from contextlib import suppress
+import logging
 from pathlib import Path
 
 from observatory.action_registry import ActionRegistry
@@ -19,6 +20,8 @@ from observatory.preview import CapturePreview, CaptureBuffer
 # Imports for ActionRegistry
 import observatory.utils.debug
 import astro.calib_reduction, astro.astro_catalog, astro.platesolve
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from observatory.devices.camera import AlpaqueroCamera
@@ -88,7 +91,7 @@ class Observatory:
 
         instruments = []
         for instrument in observatory_config.get("instruments", []):
-            print("Loading instrument:", instrument)
+            logger.info("Loading instrument: %s", instrument)
             instrument_obj = Instrument(
                 id=instrument.get("id"),
                 name=instrument.get("name"),
@@ -104,7 +107,7 @@ class Observatory:
                 "name": instrument_obj.name,
                 "devices": instrument_obj.devices
             })
-        print("Loaded instruments:", [instr.name for instr in instruments])
+        logger.info("Loaded instruments: %s", [instr.name for instr in instruments])
         self.instrument_registry = InstrumentRegistry(instruments)
 
         # Start observatory loops
@@ -179,7 +182,7 @@ class Observatory:
             yield from getattr(self, spec.collection).values()
 
     async def shutdown(self, *, timeout: float = 10) -> None:
-        print("Shutting down observatory services...")
+        logger.info("Shutting down observatory services")
         self.status = "shutting_down"
 
         if self._observatory_task and not self._observatory_task.done():
@@ -219,7 +222,7 @@ class Observatory:
         self.status = "shutdown"
 
     def emergency_shutdown(self):
-        print("Performing emergency shutdown procedures")
+        logger.critical("Performing emergency shutdown procedures")
         for telescope in self.telescopes.values():
             try:
                 telescope.park()
@@ -238,7 +241,7 @@ class Observatory:
 
     def emergency_halt(self):
         # TODO stop all sequences
-        print("Emergency halt triggered")
+        logger.critical("Emergency halt triggered")
         for telescope in self.telescopes.values():
             try:
                 telescope.alpaca.AbortSlew()

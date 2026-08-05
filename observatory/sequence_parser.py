@@ -5,6 +5,7 @@ from observatory.condition_expression import ConditionExpression, ConditionExpre
 from observatory.observatory import Observatory
 import asyncio
 import inspect
+import logging
 import math
 import re
 from pathlib import Path
@@ -15,6 +16,8 @@ IDENTIFIER_PATTERN = re.compile(r"[A-Za-z_]\w*")
 UNTIL_PATTERN = re.compile(r"(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?")
 RESERVED_VARIABLE_NAMES = {"args", "observatory", "conditions"}
 DEFAULT_SEQUENCE_CATALOG_DIR = Path(__file__).resolve().parent / "sequences"
+
+logger = logging.getLogger(__name__)
 
 class SequenceParser(SequenceBuilder):
     context_args_only = True
@@ -218,7 +221,10 @@ class SequenceParser(SequenceBuilder):
         def call_action():
             accepted_args = self._accepted_args(args, original_signature, context)
             if action_type != "observatory" and "observatory" in original_signature.parameters:
-                print("Adding observatory to accepted args for action:", action_name)
+                logger.info(
+                    "Adding observatory to accepted args for action: %s",
+                    action_name,
+                )
                 accepted_args["observatory"] = self.observatory
 
             if action_type == "device":

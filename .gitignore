@@ -13,5 +13,8 @@ test.py
 de421.bsp
 
 archive/
-tests/
+tests/*
+!tests/test_logging_setup.py
+!tests/test_log_broker.py
 docs/
+logs/

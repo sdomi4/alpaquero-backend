@@ -1,3 +1,4 @@
+import logging
 from observatory.devices.base import ObservatoryDevice
 from alpaquero.alpaquero import Alpaquero
 from alpaca import telescope
@@ -8,6 +9,8 @@ from observatory.safety import require_conditions
 from observatory.safety_conditions import *
 
 from observatory.action_registry import ActionRegistry
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from observatory.observatory import Observatory
@@ -105,21 +108,21 @@ class AlpaqueroTelescope(ObservatoryDevice[telescope.Telescope]):
 
     def tracking_rate(self, tracking_rate: int):
         try:
-            print("setting tracking rate, current:", self.alpaca.TrackingRate)
+            logger.info("Current tracking rate: %s", self.alpaca.TrackingRate)
             match tracking_rate:
                 case 0:
                     self.alpaca.TrackingRate = telescope.DriveRates.driveSidereal
                 case 1:
                     self.alpaca.TrackingRate = telescope.DriveRates.driveLunar
                 case 2:
-                    print("solar")
+                    logger.info("Setting solar tracking rate")
                     self.alpaca.TrackingRate = telescope.DriveRates.driveSolar
                 case _:
                     raise TelescopeError(code="tracking_rate_invalid", message=f"Invalid tracking rate: {tracking_rate}")
-            print("tracking rate after:", self.alpaca.TrackingRate)
+            logger.info("Tracking rate set to %s", self.alpaca.TrackingRate)
         except Exception as e:
-            print(e)
-            raise TelescopeError(code="tracking_rate_invalid", message=f"Error setting tracking rate to {tracking_rate}")
+            logger.exception("Error setting tracking rate to %s", tracking_rate)
+            raise TelescopeError(code="tracking_rate_invalid", message=f"Error setting tracking rate to {tracking_rate}") from e
     
     async def trigger_park(self, override: bool = False):
         self.dispatch_trigger(self.park, override=override)

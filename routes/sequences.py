@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Response, UploadFile
@@ -7,6 +8,8 @@ from observatory.error_handler import handle_error
 from observatory.observatory import Observatory
 from observatory.sequence_parser import SequenceParser
 from routes import get_observatory
+
+logger = logging.getLogger(__name__)
 
 
 class StartSequenceRequest(BaseModel):
@@ -54,7 +57,7 @@ async def upload_sequence(
             filename=file.filename,
         )
         parsed_sequence = parsed_builder.build(save=save)
-        print(parsed_sequence)
+        logger.info("Parsed sequence: %s", parsed_sequence)
         if dry_run:
             return {"status": "valid", "parsed_steps": len(parsed_sequence.steps)}
 

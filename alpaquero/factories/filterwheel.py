@@ -1,9 +1,12 @@
+import logging
 from alpaca import filterwheel
 from time import sleep
 
 from typing import TYPE_CHECKING
 
 from observatory.state import StateManager, FilterwheelState
+
+logger = logging.getLogger(__name__)
 
 class FilterWheelConnectionError(RuntimeError):
     pass
@@ -18,7 +21,7 @@ def filterwheel_factory(
         state: "StateManager" = None,
     ) -> filterwheel.FilterWheel:
     try:
-        print("connecting to filter wheel", id, address)
+        logger.info("Connecting to filter wheel %s at %s", id, address)
         fw = filterwheel.FilterWheel(address, device_number)
         
         timeout = 0
@@ -26,7 +29,6 @@ def filterwheel_factory(
         while fw.Connecting:
             timeout += 1
             if timeout > 10:
-                print(f"Filter wheel {id} connection timed out")
                 raise FilterWheelConnectionError(f"Filter wheel {id} connection timed out")
             sleep(1)
         state.add_device(FilterwheelState(
@@ -37,5 +39,5 @@ def filterwheel_factory(
         ))
         return fw
     except Exception as e:
-        print(f"Error connecting to filter wheel {id}: {e}")
-        raise FilterWheelConnectionError(f"Error connecting to filter wheel {id}: {e}")
+        logger.exception("Error connecting to filter wheel %s", id)
+        raise FilterWheelConnectionError(f"Error connecting to filter wheel {id}: {e}") from e

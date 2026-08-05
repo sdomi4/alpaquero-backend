@@ -1,3 +1,4 @@
+import logging
 from observatory.action_registry import ActionRegistry
 from observatory.devices.base import ObservatoryDevice
 from alpaquero.alpaquero import Alpaquero
@@ -11,6 +12,8 @@ import numpy as np
 import astropy.io.fits as fits
 from pathlib import Path
 from observatory.error_handler import handle_error
+
+logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
@@ -109,10 +112,10 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             self.alpaca.NumY = self.alpaca.CameraYSize // self.alpaca.BinY
 
             timestamp_before = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
-            print("time before exposure start", timestamp_before)
+            logger.info("Time before exposure start: %s", timestamp_before)
             self.alpaca.StartExposure(exposure, True)
             timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
-            print("time after exposure start", timestamp)
+            logger.info("Time after exposure start: %s", timestamp)
 
             state_device = self.observatory.state.get_device(self.id)
             state_device.last_exposure_duration = exposure

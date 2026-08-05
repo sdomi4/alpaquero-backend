@@ -1,7 +1,10 @@
+import logging
 from alpaca import dome
 from time import sleep
 
 from observatory.state import StateManager, DomeState
+
+logger = logging.getLogger(__name__)
 
 class DomeConnectionError(RuntimeError):
     pass
@@ -14,18 +17,17 @@ def dome_factory(
         state: "StateManager" = None,
     ) -> dome.Dome:
     try:
-        print("connecting to dome", id, address)
+        logger.info("Connecting to dome %s at %s", id, address)
         d = dome.Dome(address, device_number)
         timeout = 0
         d.Connect()
         while d.Connecting:
                 timeout += 1
                 if timeout > 10:
-                    print("Dome connection timed out")
                     raise DomeConnectionError("Dome connection timed out")
                 sleep(1)
         state.add_device(DomeState(id=id, connected=True, status=d.ShutterStatus))
         return d
     except Exception as e:
-        print(f"Error connecting to dome: {e}")
-        raise DomeConnectionError(f"Error connecting to dome: {e}")
+        logger.exception("Error connecting to dome %s", id)
+        raise DomeConnectionError(f"Error connecting to dome: {e}") from e

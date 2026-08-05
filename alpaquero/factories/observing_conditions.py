@@ -1,7 +1,10 @@
+import logging
 from alpaca import observingconditions
 from time import sleep
 
 from observatory.state import StateManager, ObservingConditionsState
+
+logger = logging.getLogger(__name__)
 
 class ObservingConditionsConnectionError(RuntimeError):
     pass
@@ -14,18 +17,17 @@ def observing_conditions_factory(
         state: "StateManager" = None,
     ) -> observingconditions.ObservingConditions:
     try:
-        print("connecting to observing conditions", id, address)
+        logger.info("Connecting to observing conditions %s at %s", id, address)
         oc = observingconditions.ObservingConditions(address, device_number)
         timeout = 0
         oc.Connect()
         while oc.Connecting:
                 timeout += 1
                 if timeout > 10:
-                    print("Observing conditions connection timed out")
                     raise ObservingConditionsConnectionError("Observing conditions connection timed out")
                 sleep(1)
         state.add_device(ObservingConditionsState(id=id, connected=True))
         return oc
     except Exception as e:
-        print(f"Error connecting to observing conditions: {e}")
-        raise ObservingConditionsConnectionError(f"Error connecting to observing conditions: {e}")
+        logger.exception("Error connecting to observing conditions %s", id)
+        raise ObservingConditionsConnectionError(f"Error connecting to observing conditions: {e}") from e

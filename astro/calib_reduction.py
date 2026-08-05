@@ -1,3 +1,4 @@
+import logging
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from observatory.observatory import Observatory
@@ -10,6 +11,8 @@ import os, time
 import ccdproc as ccdp
 import numpy as np
 from astropy import units as u
+
+logger = logging.getLogger(__name__)
 
 def _inv_median(a):
     return 1 / np.median(a)
@@ -28,7 +31,7 @@ def create_mdark(
         observatory: 'Observatory' = None,
         night_folder: bool = True
     ):
-    print("calibrated path:", calibrated_path)
+    logger.info("Calibrated path: %s", calibrated_path)
     if type(calibrated_path) == str:
         calibrated_path = Path(os.path.dirname(calibrated_path))
 
@@ -51,7 +54,7 @@ def create_mdark(
     output_path.mkdir(parents=True, exist_ok=True)
 
     dark_images = ccdp.ImageFileCollection(location=calibrated_path, glob_include=dark_glob)
-    print(dark_images.files)
+    logger.info("Dark image files: %s", dark_images.files)
     dark_ccds = []
     
     for ccd, file_name in dark_images.ccds(ccd_kwargs={"unit": "adu"}, return_fname=True):
@@ -87,7 +90,7 @@ def calibrate_flats(
         observatory: 'Observatory' = None,
         night_folder: bool = True
     ):
-    print(raw_flats_path)
+    logger.info("Raw flats path: %s", raw_flats_path)
     if type(raw_flats_path) == str:
         raw_flats_path = Path(os.path.dirname(raw_flats_path))
     if base_path is None:

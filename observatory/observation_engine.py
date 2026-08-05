@@ -1,14 +1,17 @@
 import concurrent
 import asyncio, random, string
+import logging
 from asyncio import TaskGroup
 from abc import ABC, abstractmethod
-import inspect, traceback
+import inspect
 from observatory.condition_expression import ConditionExpression, ConditionResult
 from observatory.error_handler import handle_error_async
 from typing import TYPE_CHECKING
 from datetime import datetime, timedelta
 if TYPE_CHECKING:
     from observatory.observatory import Observatory
+
+logger = logging.getLogger(__name__)
 
 class GracefulCancellation(asyncio.CancelledError):
     pass
@@ -51,21 +54,20 @@ class ExecutionContext:
         return self._gate.is_set()
 
     async def checkpoint(self):
-        #print("checkpoint")
         if self._abort.is_set():
-            print("Sequence aborted")
+            logger.info("Sequence aborted")
             raise GracefulCancellation()
         if not self._gate.is_set():
-            print("Sequence paused, waiting to resume...")
+            logger.info("Sequence paused, waiting to resume")
         await self._gate.wait()
         if self._abort.is_set():
-            print("Sequence aborted")
+            logger.info("Sequence aborted")
             raise GracefulCancellation()
 
 async def sleep_with_checkpoints(duration: float, context: ExecutionContext):
     for _ in range(int(duration)):
         await asyncio.sleep(1)
-        print("Sleeping...")
+        logger.info("Sequence sleep checkpoint")
         await context.checkpoint()
 
 async def sleep_active_with_checkpoints(duration: float, context: ExecutionContext):
@@ -198,9 +200,14 @@ class Step(ABC):
             executed_in_batch = False
             for index in range(self.lifecycle.hooks.get("repeat", 1)):
                 await self.context.checkpoint()
-                print(f"Repeating {type(self).__name__}:", index)
-                print(
-                    f"Delaying {type(self).__name__} for",
+                logger.info(
+                    "Repeating %s: %s",
+                    type(self).__name__,
+                    index,
+                )
+                logger.info(
+                    "Delaying %s for %s",
+                    type(self).__name__,
                     self.lifecycle.hooks.get("delay", 0),
                 )
                 await sleep_with_checkpoints(
@@ -212,18 +219,18 @@ class Step(ABC):
                 when = self.lifecycle.hooks.get("when")
                 if when:
                     condition = await self._evaluate_condition(when)
-                    print("When condition:", condition.value)
+                    logger.info("When condition: %s", condition.value)
                     if not condition.value:
                         continue
 
                 await self.context.checkpoint()
-                print(f"Running {type(self).__name__} before hooks")
+                logger.info("Running %s before hooks", type(self).__name__)
                 await self.lifecycle.run("before")
                 await self.context.checkpoint()
                 await execute_iteration(index)
                 executed_in_batch = True
                 await self.context.checkpoint()
-                print(f"Running {type(self).__name__} after hooks")
+                logger.info("Running %s after hooks", type(self).__name__)
                 await self.lifecycle.run("after")
                 await self.context.checkpoint()
 
@@ -372,7 +379,7 @@ class Sequence(Step):
             for step in self.steps:
                 await self.context.checkpoint()
                 assert isinstance(step, Step), "Sequence children must implement Step"
-                print("Running step:", step.name)
+                logger.info("Running step: %s", step.name)
                 if self.lifecycle.hooks.get("update", True):
                     info_text = f"Step: {step.name}"
                     if self.lifecycle.hooks.get("repeat", 1) > 1:
@@ -385,9 +392,9 @@ class Sequence(Step):
         except Exception as e:
             await handle_error_async(e, f"Error occurred in sequence {self.name}", level="error")
             await self.lifecycle.run("on_error")
-            raise e
+            raise
         finally:
-            print("Running Sequence finally hooks")
+            logger.info("Running Sequence finally hooks")
             await self.lifecycle.run("finally")
 
 class ParallelGroup(Step):
@@ -424,7 +431,7 @@ class ParallelGroup(Step):
             self.context.start_time = datetime.now()
 
         async def execute_iteration(index: int):
-            print(f"Task List: {self.tasks}")
+            logger.info("Task list: %s", self.tasks)
             if self.lifecycle.hooks.get("update", True):
                 info_text = f"ParallelGroup: {self.name}"
                 if self.lifecycle.hooks.get("repeat", 1) > 1:
@@ -435,18 +442,17 @@ class ParallelGroup(Step):
                     for task in self.tasks:
                         tg.create_task(task.run())
             except* GracefulCancellation:
-                print("ParallelGroup aborted due to GracefulCancellation")
+                logger.info("ParallelGroup aborted due to graceful cancellation")
 
-        print("Running ParallelGroup:", self.name)
+        logger.info("Running ParallelGroup: %s", self.name)
         try:
             await self._run_lifecycle(execute_iteration)
         except Exception as e:
             await handle_error_async(e, f"Error occurred in parallel group {self.name}", level="error")
-            traceback.print_exc()
             await self.lifecycle.run("on_error")
-            raise e
+            raise
         finally:
-            print("Running ParallelGroup finally hooks")
+            logger.info("Running ParallelGroup finally hooks")
             await self.lifecycle.run("finally")
         
 
@@ -537,7 +543,7 @@ class Task(Step):
             self.context.start_time = datetime.now()
 
         async def execute_iteration(index: int):
-            print("Executing action for Task:", self.name)
+            logger.info("Executing action for Task: %s", self.name)
             if self.lifecycle.hooks.get("update", True):
                 info_text = f"Task: {self.name}"
                 if self.lifecycle.hooks.get("repeat", 1) > 1:
@@ -549,15 +555,15 @@ class Task(Step):
             if self.register:
                 self.context.register_result(self.register, result)
 
-        print("Running Task:", self.name)
+        logger.info("Running Task: %s", self.name)
         try:
             await self._run_lifecycle(execute_iteration)
         except Exception as e:
             await handle_error_async(e, f"Error occurred in task {self.name}", level="error")
             await self.lifecycle.run("on_error")
-            raise e
+            raise
         finally:
-            print("Running Task finally hooks:", self.name)
+            logger.info("Running Task finally hooks: %s", self.name)
             await self.lifecycle.run("finally")
 
 class SequenceBuilder(ABC):

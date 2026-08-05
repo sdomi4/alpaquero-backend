@@ -1,5 +1,14 @@
 ---
 
+logging:
+  level: "INFO"
+  directory: "logs"
+  filename: "arriero.log"
+  max_bytes: 20971520
+  backup_count: 10
+  frontend_history: 100
+  frontend_queue_size: 250
+
 devices:
   - id: "sim_dome"
     type: "dome"

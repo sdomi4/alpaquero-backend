@@ -1,7 +1,10 @@
+import logging
 from alpaca import covercalibrator
 from time import sleep
 
 from observatory.state import StateManager, CoverState
+
+logger = logging.getLogger(__name__)
 
 class CoverConnectionError(RuntimeError):
     pass
@@ -14,18 +17,17 @@ def cover_factory(
         state: "StateManager" = None,
     ) -> covercalibrator.CoverCalibrator:
     try:
-        print("connecting to cover calibrator", id, address)
+        logger.info("Connecting to cover calibrator %s at %s", id, address)
         c = covercalibrator.CoverCalibrator(address, device_number)
         timeout = 0
         c.Connect()
         while c.Connecting:
                 timeout += 1
                 if timeout > 10:
-                    print("Cover calibrator connection timed out")
                     raise CoverConnectionError("Cover calibrator connection timed out")
                 sleep(1)
         state.add_device(CoverState(id=id, connected=True))
         return c
     except Exception as e:
-        print(f"Error connecting to cover calibrator: {e}")
-        raise CoverConnectionError(f"Error connecting to cover calibrator: {e}")
+        logger.exception("Error connecting to cover calibrator %s", id)
+        raise CoverConnectionError(f"Error connecting to cover calibrator: {e}") from e

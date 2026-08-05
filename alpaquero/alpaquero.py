@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 from time import sleep
 import time
 import threading
@@ -6,9 +7,9 @@ from observatory.error_handler import handle_error
 from observatory.errors import StateError
 
 from typing import Callable, Generic, TypeVar
-import traceback
 
 TAlpaca = TypeVar("TAlpaca")
+logger = logging.getLogger(__name__)
 
 class Alpaquero(Generic[TAlpaca]):
     def __init__(
@@ -101,7 +102,6 @@ class Alpaquero(Generic[TAlpaca]):
                 self._sleep_coop(self._poll_time)
             except Exception as e:
                 handle_error(e, f"Error in {self.name} Alpaca updater", level="error")
-                traceback.print_exc()
                 self._notify_destroyed()
                 self._alpaca = None
                 healthy = False
@@ -115,7 +115,7 @@ class Alpaquero(Generic[TAlpaca]):
         try:
             self._alpaca = self._factory()
             if self._alpaca:
-                print(f"Reconnected to {self.name} Alpaca device")
+                logger.info("Reconnected to %s Alpaca device", self.name)
         except Exception as e:
             handle_error(e, f"Error reconnecting to {self.name} Alpaca device", level="warning")
             self._alpaca = None
