@@ -24,7 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 class LoggingSettings:
     level: str = "INFO"
     directory: Path = PROJECT_ROOT / "logs"
-    filename: str = "arriero.log"
+    filename: str = "alpaquero.log"
     max_bytes: int = 20 * 1024 * 1024
     backup_count: int = 10
     frontend_history: int = 100
@@ -153,30 +153,30 @@ def load_logging_settings() -> LoggingSettings:
         values = config.get("logging", {}) or {}
 
     directory = Path(
-        os.getenv("ARRIERO_LOG_DIR", str(values.get("directory", "logs")))
+        os.getenv("ALPAQUERO_LOG_DIR", str(values.get("directory", "logs")))
     )
     if not directory.is_absolute():
         directory = PROJECT_ROOT / directory
 
     return LoggingSettings(
-        level=os.getenv("ARRIERO_LOG_LEVEL", str(values.get("level", "INFO"))),
+        level=os.getenv("ALPAQUERO_LOG_LEVEL", str(values.get("level", "INFO"))),
         directory=directory,
         filename=os.getenv(
-            "ARRIERO_LOG_FILENAME",
-            str(values.get("filename", "arriero.log")),
+            "ALPAQUERO_LOG_FILENAME",
+            str(values.get("filename", "alpaquero.log")),
         ),
         max_bytes=int(
-            os.getenv("ARRIERO_LOG_MAX_BYTES", str(values.get("max_bytes", 20 * 1024 * 1024)))
+            os.getenv("ALPAQUERO_LOG_MAX_BYTES", str(values.get("max_bytes", 20 * 1024 * 1024)))
         ),
         backup_count=int(
-            os.getenv("ARRIERO_LOG_BACKUP_COUNT", str(values.get("backup_count", 10)))
+            os.getenv("ALPAQUERO_LOG_BACKUP_COUNT", str(values.get("backup_count", 10)))
         ),
         frontend_history=int(
-            os.getenv("ARRIERO_LOG_FRONTEND_HISTORY", str(values.get("frontend_history", 100)))
+            os.getenv("ALPAQUERO_LOG_FRONTEND_HISTORY", str(values.get("frontend_history", 100)))
         ),
         frontend_queue_size=int(
             os.getenv(
-                "ARRIERO_LOG_FRONTEND_QUEUE_SIZE",
+                "ALPAQUERO_LOG_FRONTEND_QUEUE_SIZE",
                 str(values.get("frontend_queue_size", 250)),
             )
         ),

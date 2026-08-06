@@ -96,7 +96,7 @@ class LoggingSetupTests(unittest.TestCase):
             self.assertTrue(settings.file_path.exists())
             self.assertTrue(Path(f"{settings.file_path}.1").exists())
             self.assertLessEqual(
-                len(list(Path(tmpdir).glob("arriero.log.*"))),
+                len(list(Path(tmpdir).glob("alpaquero.log.*"))),
                 settings.backup_count,
             )
 

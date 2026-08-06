@@ -3,7 +3,7 @@
 logging:
   level: "INFO"
   directory: "logs"
-  filename: "arriero.log"
+  filename: "alpaquero.log"
   max_bytes: 20971520
   backup_count: 10
   frontend_history: 100

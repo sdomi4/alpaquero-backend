@@ -10,8 +10,8 @@ def main() -> None:
 
         uvicorn.run(
             "main:app",
-            host=os.getenv("ARRIERO_HOST", "127.0.0.1"),
-            port=int(os.getenv("ARRIERO_PORT", "8000")),
+            host=os.getenv("ALPAQUERO_HOST", "127.0.0.1"),
+            port=int(os.getenv("ALPAQUERO_PORT", "8000")),
             log_config=None,
             access_log=True,
             workers=1,
