@@ -36,3 +36,7 @@ async def list_cameras(observatory: Observatory = Depends(get_observatory)):
 async def emergency_halt(observatory: Observatory = Depends(get_observatory)):
     observatory.emergency_halt()
     return {"status": "emergency halt initiated"}
+
+@router.get("/livestreams")
+async def list_livestreams(observatory: Observatory = Depends(get_observatory)):
+    return None
