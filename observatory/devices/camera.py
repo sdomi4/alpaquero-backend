@@ -67,33 +67,37 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
         try:
             if not self.alpaca.CoolerOn:
                 return
-            
-            # gradually warm up by increasing the temperature setpoint in steps
             current_temp = self.alpaca.CCDTemperature
-            conditions_devices = self.observatory.observing_conditions.keys()
-            conditions_device = self.observatory.state.get_device(conditions_devices[0]) if conditions_devices else None
-            if conditions_device:
-                env_temp = conditions_device.ambient
-            else:
-                env_temp = 15  # default to 15C if no conditions device available
-
+            conditions_device_id = next(iter(self.observatory.observing_conditions), None)
+            conditions_device = (
+                self.observatory.state.get_device(conditions_device_id)
+                if conditions_device_id else None
+            )
+            env_temp = conditions_device.ambient if conditions_device else 15
             step = 5
-
             while current_temp < env_temp:
                 next_temp = min(current_temp + step, env_temp)
+                action = (
+                    f"Warming up {self.alpaquero.name}: "
+                    f"{current_temp:.1f}C -> {next_temp:.1f}C"
+                )
+                self.observatory.state.add_action(action)
                 self.alpaca.SetCCDTemperature = next_temp
-                self.observatory.state.add_action(f"Warming up {self.alpaquero.name}: {current_temp:.1f}C -> {next_temp:.1f}C")
-                
+
                 while True:
                     current_temp = self.alpaca.CCDTemperature
-                    if abs(current_temp - next_temp) < 10:
+                    if current_temp >= next_temp - 1:
                         break
                     sleep(10)
-                
-                self.observatory.state.remove_action(f"Warming up {self.alpaquero.name}: {current_temp:.1f}C -> {next_temp:.1f}C")
+
+                self.observatory.state.remove_action(action)
             self.alpaca.CoolerOn = False
+
         except Exception as e:
-            raise CameraError(code="camera_warmup_failed", message=f"Error warming up camera {self.alpaquero.name}: {e}")
+            raise CameraError(
+                code="camera_warmup_failed",
+                message=f"Error warming up camera {self.alpaquero.name}: {e}"
+            )
 
     @ActionRegistry.register(
         "expose_camera",
@@ -159,6 +163,7 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             hdr['INSTRUME'] = self.name
             try:
                 hdr['GAIN'] = self.alpaca.Gain
+                hdr['EGAIN'] = self.alpaca.ElectronsPerADU
             except:
                 pass
             try:
