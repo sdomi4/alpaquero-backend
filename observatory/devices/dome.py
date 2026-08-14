@@ -6,7 +6,7 @@ from observatory.errors import DomeError
 from time import sleep
 from typing import TYPE_CHECKING, Callable
 from observatory.safety import require_conditions
-from observatory.safety_conditions import weather_is_safe
+from observatory.safety_conditions import weather_is_safe, telescope_is_parked
 
 if TYPE_CHECKING:
     from observatory.observatory import Observatory
@@ -49,6 +49,7 @@ class AlpaqueroDome(ObservatoryDevice[dome.Dome]):
                 raise DomeError(f"Error monitoring dome {self.alpaquero.name} while opening: {e}")
             
     @ActionRegistry.register("close_dome", observatory_arg=False, action_type="device")
+    @require_conditions(telescope_is_parked)
     def close(self, override: bool = False):
         state_device = self.observatory.state.get_device(self.id)
         state_device.shutter_status = self.alpaca.ShutterStatus
