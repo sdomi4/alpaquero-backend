@@ -129,6 +129,19 @@ def _get_sequence_context(context_id: str, observatory: Observatory):
         )
     return context_entry[1]
 
+@router.get("/{context_id}")
+async def get_live_sequence(
+    context_id: str,
+    observatory: Observatory = Depends(get_observatory),
+):
+    context_entry = observatory.sequence_registry.registry.get(context_id)
+    if context_entry is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Sequence with context_id '{context_id}' not found.",
+        )
+    sequence_context = context_entry[1]
+    return sequence_context.root_sequence.json() if sequence_context.root_sequence else {"status": "No root sequence available."}
 
 @router.post("/{context_id}/pause")
 async def pause_sequence(

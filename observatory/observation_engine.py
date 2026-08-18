@@ -34,6 +34,11 @@ class ExecutionContext:
         self.observatory = observatory
         self.start_time = None
 
+        self.root_sequence = None
+        self.step_ids = set()
+        self.current_steps = []
+
+
     def request_pause(self):
         self._gate.clear()
 
@@ -84,6 +89,7 @@ async def sleep_active_with_checkpoints(duration: float, context: ExecutionConte
 
 class Step(ABC):
     def __init__(self, name: str, context: ExecutionContext):
+        self.id = generate_context_id()
         self.name = name
         self.context = context
 
@@ -238,6 +244,16 @@ class Step(ABC):
                 break
             if not executed_in_batch:
                 await sleep_active_with_checkpoints(1, self.context)
+
+    # recurse through children to build dict representation of the sequence for JSON serialization
+    def json(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "type": type(self).__name__,
+            "lifecycle": self.lifecycle.hooks,
+            "children": [child.json() for child in getattr(self, "steps", []) + getattr(self, "tasks", [])]
+        }
 
 # Utility class for lifecycle hooks in Sequences/ParallelGroups/Tasks
 class Lifecycle:
