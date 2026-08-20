@@ -30,7 +30,7 @@ class SequenceRegistry:
         while context.id in self.registry:
             context = ExecutionContext(observatory=observatory, args=params)
         self.registry[context.id] = (builder.name, context) # state tuple (name, context instance)
-        observatory.state.add_sequence(context.id, builder.name)
+        observatory.state.add_sequence(context.id, builder.name, context.current_steps)
         # Execute the sequence with the new context
         async def _runner():
             observatory.state.add_action("Sequence: " + builder.name)
@@ -45,6 +45,7 @@ class SequenceRegistry:
                     observatory=observatory,
                     **build_params,
                 )
+                context.root_sequence = sequence
                 await sequence.run()
             finally:
                 self.registry.pop(context.id, None)

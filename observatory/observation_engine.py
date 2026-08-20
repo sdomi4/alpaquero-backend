@@ -8,6 +8,7 @@ from observatory.condition_expression import ConditionExpression, ConditionResul
 from observatory.error_handler import handle_error_async
 from typing import TYPE_CHECKING
 from datetime import datetime, timedelta
+
 if TYPE_CHECKING:
     from observatory.observatory import Observatory
 
@@ -36,7 +37,7 @@ class ExecutionContext:
 
         self.root_sequence = None
         self.step_ids = set()
-        self.current_steps = []
+        self.current_steps = {}
 
 
     def request_pause(self):
@@ -90,6 +91,9 @@ async def sleep_active_with_checkpoints(duration: float, context: ExecutionConte
 class Step(ABC):
     def __init__(self, name: str, context: ExecutionContext):
         self.id = generate_context_id()
+        while self.id in context.step_ids:
+            self.id = generate_context_id()
+        context.step_ids.add(self.id)
         self.name = name
         self.context = context
 
@@ -198,13 +202,14 @@ class Step(ABC):
             return
         if not await self._await_start_condition(deadline):
             return
-
+        
         while True:
             if await self._until_satisfied(deadline):
                 break
 
             executed_in_batch = False
             for index in range(self.lifecycle.hooks.get("repeat", 1)):
+                self.context.current_steps[self.id] = index + 1
                 await self.context.checkpoint()
                 logger.info(
                     "Repeating %s: %s",
@@ -404,12 +409,14 @@ class Sequence(Step):
                 await step.run()
 
         try:
+            self.context.current_steps[self.id] = 1
             await self._run_lifecycle(execute_iteration)
         except Exception as e:
             await handle_error_async(e, f"Error occurred in sequence {self.name}", level="error")
             await self.lifecycle.run("on_error")
             raise
         finally:
+            del self.context.current_steps[self.id]
             logger.info("Running Sequence finally hooks")
             await self.lifecycle.run("finally")
 
@@ -462,12 +469,14 @@ class ParallelGroup(Step):
 
         logger.info("Running ParallelGroup: %s", self.name)
         try:
+            self.context.current_steps[self.id] = 1
             await self._run_lifecycle(execute_iteration)
         except Exception as e:
             await handle_error_async(e, f"Error occurred in parallel group {self.name}", level="error")
             await self.lifecycle.run("on_error")
             raise
         finally:
+            del self.context.current_steps[self.id]
             logger.info("Running ParallelGroup finally hooks")
             await self.lifecycle.run("finally")
         
@@ -573,12 +582,15 @@ class Task(Step):
 
         logger.info("Running Task: %s", self.name)
         try:
+            self.context.current_steps[self.id] = 1
             await self._run_lifecycle(execute_iteration)
         except Exception as e:
             await handle_error_async(e, f"Error occurred in task {self.name}", level="error")
             await self.lifecycle.run("on_error")
             raise
         finally:
+            print(self.context.current_steps)
+            del self.context.current_steps[self.id]
             logger.info("Running Task finally hooks: %s", self.name)
             await self.lifecycle.run("finally")
 

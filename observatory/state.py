@@ -17,6 +17,7 @@ class SequenceState(BaseModel):
     sequence_name: str
     status: str = "running"
     info: Optional[str] = None
+    steps: Dict[str, int] = Field(default_factory=dict)  # step id with repetition count
 
 class BaseDeviceState(BaseModel):
     id: str
@@ -177,11 +178,12 @@ class StateManager:
             except ValueError:
                 pass
 
-    def add_sequence(self, context_id: str, sequence_name: str):
+    def add_sequence(self, context_id: str, sequence_name: str, steps: Optional[list[str]] = None):
         with self._lock:
             self._snapshot.sequences[context_id] = SequenceState(
                 context_id=context_id,
                 sequence_name=sequence_name,
+                steps=steps if steps is not None else {},
             )
 
     def remove_sequence(self, context_id: str):
