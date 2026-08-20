@@ -210,6 +210,7 @@ class Step(ABC):
             executed_in_batch = False
             for index in range(self.lifecycle.hooks.get("repeat", 1)):
                 self.context.current_steps[self.id] = index + 1
+                self.context.observatory.state.update_sequence_steps(self.context.id, self.context.current_steps)
                 await self.context.checkpoint()
                 logger.info(
                     "Repeating %s: %s",
@@ -410,13 +411,16 @@ class Sequence(Step):
 
         try:
             self.context.current_steps[self.id] = 1
+            self.context.observatory.state.update_sequence_steps(self.context.id, self.context.current_steps)
             await self._run_lifecycle(execute_iteration)
         except Exception as e:
             await handle_error_async(e, f"Error occurred in sequence {self.name}", level="error")
             await self.lifecycle.run("on_error")
             raise
         finally:
-            del self.context.current_steps[self.id]
+            self.context.current_steps.pop(self.id, None)
+            self.context.observatory.state.update_sequence_steps(self.context.id, self.context.current_steps)
+            
             logger.info("Running Sequence finally hooks")
             await self.lifecycle.run("finally")
 
@@ -470,13 +474,15 @@ class ParallelGroup(Step):
         logger.info("Running ParallelGroup: %s", self.name)
         try:
             self.context.current_steps[self.id] = 1
+            self.context.observatory.state.update_sequence_steps(self.context.id, self.context.current_steps)
             await self._run_lifecycle(execute_iteration)
         except Exception as e:
             await handle_error_async(e, f"Error occurred in parallel group {self.name}", level="error")
             await self.lifecycle.run("on_error")
             raise
         finally:
-            del self.context.current_steps[self.id]
+            self.context.current_steps.pop(self.id, None)
+            self.context.observatory.state.update_sequence_steps(self.context.id, self.context.current_steps)
             logger.info("Running ParallelGroup finally hooks")
             await self.lifecycle.run("finally")
         
@@ -583,6 +589,7 @@ class Task(Step):
         logger.info("Running Task: %s", self.name)
         try:
             self.context.current_steps[self.id] = 1
+            self.context.observatory.state.update_sequence_steps(self.context.id, self.context.current_steps)
             await self._run_lifecycle(execute_iteration)
         except Exception as e:
             await handle_error_async(e, f"Error occurred in task {self.name}", level="error")
@@ -590,7 +597,8 @@ class Task(Step):
             raise
         finally:
             print(self.context.current_steps)
-            del self.context.current_steps[self.id]
+            self.context.current_steps.pop(self.id, None)
+            self.context.observatory.state.update_sequence_steps(self.context.id, self.context.current_steps)
             logger.info("Running Task finally hooks: %s", self.name)
             await self.lifecycle.run("finally")
 

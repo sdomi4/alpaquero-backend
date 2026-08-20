@@ -204,6 +204,13 @@ class StateManager:
             except KeyError:
                 raise ValueError(f"Sequence with context_id {context_id} does not exist.")
 
+    def update_sequence_steps(self, context_id: str, steps: dict[str, int]):
+        with self._lock:
+            try:
+                self._snapshot.sequences[context_id].steps = steps
+            except KeyError:
+                raise ValueError(f"Sequence with context_id {context_id} does not exist.")
+
     def set_message(self, msg_id: str, text: str) -> None:
         with self._lock:
             self._snapshot.status.messages[msg_id] = text
