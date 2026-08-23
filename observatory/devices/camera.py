@@ -12,6 +12,7 @@ import numpy as np
 import astropy.io.fits as fits
 from pathlib import Path
 from observatory.error_handler import handle_error
+from observatory.utils.date_utils import get_date_folder
 
 logger = logging.getLogger(__name__)
 
@@ -252,19 +253,9 @@ class AlpaqueroCamera(ObservatoryDevice[camera.Camera]):
             for k, v in additional_headers.items():
                 hdr[k] = v
 
-            timestamp = time.strftime('%Y%m%d_%H%M%S', time.gmtime())
-
-            # roll over date timestamp at noon UTC next day
-            if night_folder:
-                # If current time is before noon UTC, use previous day
-                now = time.gmtime()
-                if now.tm_hour < 12:
-                    previous_day = time.gmtime(time.mktime(now) - 86400)  # subtract one day
-                    date_folder = time.strftime('%Y-%m-%d', previous_day)
-                else:
-                    date_folder = time.strftime('%Y-%m-%d', now)
-            else:
-                date_folder = time.strftime('%Y-%m-%d', time.gmtime())
+            now = datetime.now(timezone.utc)
+            timestamp = now.strftime('%Y%m%d_%H%M%S')
+            date_folder = get_date_folder(night_folder, at=now)
 
             output_dir = Path(base_path) / date_folder
 

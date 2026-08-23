@@ -7,10 +7,11 @@ from pathlib import Path
 
 from astropy.nddata import CCDData
 from astropy.stats import mad_std
-import os, time
+import os
 import ccdproc as ccdp
 import numpy as np
 from astropy import units as u
+from observatory.utils.date_utils import get_date_folder
 
 logger = logging.getLogger(__name__)
 
@@ -38,17 +39,7 @@ def create_mdark(
     if base_path is None:
         base_path = observatory.base_path
 
-    # roll over date timestamp at noon UTC next day
-    if night_folder:
-        # If current time is before noon UTC, use previous day
-        now = time.gmtime()
-        if now.tm_hour < 12:
-            previous_day = time.gmtime(time.mktime(now) - 86400)  # subtract one day
-            date_folder = time.strftime('%Y-%m-%d', previous_day)
-        else:
-            date_folder = time.strftime('%Y-%m-%d', now)
-    else:
-        date_folder = time.strftime('%Y-%m-%d', time.gmtime())
+    date_folder = get_date_folder(night_folder)
 
     output_path = Path(base_path) / date_folder / output_folder
     output_path.mkdir(parents=True, exist_ok=True)
@@ -96,17 +87,7 @@ def calibrate_flats(
     if base_path is None:
         base_path = observatory.base_path
     
-        # roll over date timestamp at noon UTC next day
-    if night_folder:
-        # If current time is before noon UTC, use previous day
-        now = time.gmtime()
-        if now.tm_hour < 12:
-            previous_day = time.gmtime(time.mktime(now) - 86400)  # subtract one day
-            date_folder = time.strftime('%Y-%m-%d', previous_day)
-        else:
-            date_folder = time.strftime('%Y-%m-%d', now)
-    else:
-        date_folder = time.strftime('%Y-%m-%d', time.gmtime())
+    date_folder = get_date_folder(night_folder)
     output_path = Path(base_path) / date_folder / output_folder
     output_path.mkdir(parents=True, exist_ok=True)
     
