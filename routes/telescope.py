@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
+from astro.coordinates import parse_coordinates, format_coordinates
 from observatory.error_handler import handle_error
 from observatory.safety import safety_override
 from observatory.observatory import Observatory
@@ -6,6 +8,21 @@ from routes import get_observatory
 from astro.astro_catalog import get_sun_position, get_moon_position
 
 router = APIRouter(prefix="/telescope", tags=["telescope"])
+
+
+class SlewRequest(BaseModel):
+    ra: str | float
+    dec: str | float = ""
+
+
+@router.post("/{telescope_id}/slew")
+async def telescope_slew_input(
+    telescope_id: str,
+    request: SlewRequest,
+    override: bool = Depends(safety_override),
+    observatory: Observatory = Depends(get_observatory),
+):
+    return await telescope_slew(telescope_id, request.ra, request.dec, override, observatory)
 
 @router.post("/{telescope_id}/startup")
 async def telescope_startup(
@@ -56,13 +73,18 @@ async def telescope_unpark(
 @router.post("/{telescope_id}/slew/{ra}/{dec}")
 async def telescope_slew(
     telescope_id: str,
-    ra: float,
-    dec: float,
+    ra: str,
+    dec: str,
     override: bool = Depends(safety_override),
     observatory: Observatory = Depends(get_observatory)
 ):
     try:
+        ra, dec = parse_coordinates(ra, dec)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    try:
         await observatory.telescopes[telescope_id].trigger_slew(ra, dec, override=override)
+        return format_coordinates(ra, dec)
     except Exception as e:
         message = handle_error(e, f"Error slewing telescope {telescope_id}", level="error")
         raise HTTPException(status_code=500, detail=message)

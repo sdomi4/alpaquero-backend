@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
+from astro.coordinates import format_coordinates
 import threading
 import time
 from typing import Annotated, Dict, Literal, Optional, Union
@@ -41,6 +42,10 @@ class TelescopeState(BaseDeviceState):
     position: Optional[Dict[str, float]] = None  # e.g., {"ra": 0.0, "dec": 0.0}
     target: Optional[Dict[str, float]] = None  # e.g., {"ra": 0.0, "dec": 0.0}
     side_of_pier: Optional[int] = -1  # 0 = east, 1 = west, -1 = unknown
+
+    @field_serializer("position", "target")
+    def serialize_coordinates(self, value: Optional[Dict[str, float]]) -> Optional[Dict[str, str]]:
+        return None if value is None else format_coordinates(value["ra"], value["dec"])
 
 class ObservingConditionsState(BaseDeviceState):
     device_type: Literal["observing_conditions"] = "observing_conditions"
