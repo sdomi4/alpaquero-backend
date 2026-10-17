@@ -1,5 +1,6 @@
 from skyfield.api import load, wgs84
 from datetime import datetime, timezone
+from astroquery.simbad import Simbad
 
 # Load the ephemeris data
 ts = load.timescale()
@@ -9,7 +10,6 @@ moon = planets['moon']
 sun = planets['sun']
 # Sonnenturm location:
 sonnenturm = earth + wgs84.latlon(latitude_degrees=46.85472, longitude_degrees=7.45389, elevation_m=985.5)
-
 
 
 def get_sun_position():
@@ -35,3 +35,9 @@ def get_moon_position():
         "dec": dec.degrees,
         "distance": distance.km
     }
+
+def star_lookup(name: str):
+    result = Simbad.query_object(name)
+    if result is None:
+        return None
+    return float(result[0]["ra"])/15, float(result[0]["dec"])

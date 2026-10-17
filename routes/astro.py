@@ -9,9 +9,14 @@ from observatory.error_handler import handle_error
 from observatory.observatory import Observatory
 from routes import get_observatory
 
+from astro.astro_catalog import star_lookup
+
 
 router = APIRouter(prefix="/astro", tags=["astro"])
 
+class StarLookupResponse(BaseModel):
+    ra: float
+    dec: float
 
 class PinpointRequest(BaseModel):
     folder_path: str
@@ -96,3 +101,11 @@ async def pinpoint_job_status(job_id: str):
     if job is None:
         raise HTTPException(status_code=404, detail="PinPoint job not found")
     return job
+
+@router.post("/catalog/{name}", response_model=StarLookupResponse)
+async def catalog_lookup(name: str):
+    result = star_lookup(name)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Star not found")
+    ra, dec = result
+    return StarLookupResponse(ra=ra, dec=dec)
